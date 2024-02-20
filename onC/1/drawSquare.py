@@ -4,6 +4,9 @@ def drawSquare(t, sz):
         t.left(90)
 
 import turtle
+import os
+
+
 
 alex = turtle.Turtle()
 
