@@ -6,12 +6,13 @@ def drawSquare(t, sz):
 import turtle
 import time
 
-turtle.speed(2)
+turtle.speed(1)
 
 alex = turtle.Turtle()
 
 
 
 drawSquare(alex, 50)
+drawSquare(alex, 60)
 
-
+time.sleep(10)
