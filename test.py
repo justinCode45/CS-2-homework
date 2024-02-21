@@ -1,5 +1,5 @@
 import cv2
-
+# new comment
 #set window's size
 # cv2.namedWindow('Grayscale', cv2.WINDOW_NORMAL)
 
