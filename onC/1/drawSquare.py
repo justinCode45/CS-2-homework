@@ -4,11 +4,14 @@ def drawSquare(t, sz):
         t.left(90)
 
 import turtle
-import os
+import time
 
-
+turtle.speed(2)
 
 alex = turtle.Turtle()
 
+
+
 drawSquare(alex, 50)
+
 
