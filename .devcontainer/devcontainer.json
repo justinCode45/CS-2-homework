@@ -10,5 +10,9 @@
 	"containerEnv": {
 		"DISPLAY": "host.docker.internal:0"
 	}
+	// "mounts": [
+    //     "source=/wsl.localhost/docker-desktop/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind,consistency=cached"
+    //   ],
+    // "runArgs": ["--privileged"]
 	
 }
