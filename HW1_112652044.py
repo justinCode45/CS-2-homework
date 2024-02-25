@@ -15,13 +15,19 @@ import numpy as np
 import random
 import time
 import numpy.typing as npt
-
+import cProfile
 
 
 SCREEN_WIDTH = 1580
 SCREEN_HEIGHT = 720
 screen = turtle.Screen()
 
+def fasterChangeColor(t: Turtle, r: int, g: int, b: int) -> None:
+    t._newLine()
+    temp = t._colorstr((r, g, b)) 
+    t._fillcolor = temp
+    t._pencolor = temp
+    t._update()
 
 def setupScreen() -> None:
     screen.screensize(SCREEN_WIDTH, SCREEN_HEIGHT)
@@ -155,7 +161,6 @@ def GaussianKernel(size: int, sigma: float) -> np.ndarray:
 
 def drawDetailInBox(t: Turtle, img: np.ndarray, o: npt.ArrayLike, r: npt.ArrayLike, torigin: npt.ArrayLike) -> None:
     
-    moveTurtle(t, o)
 
     for _ in range(100) :
         p1 = randomPointonRect(o, r)
@@ -178,8 +183,10 @@ def drawDetailInBox(t: Turtle, img: np.ndarray, o: npt.ArrayLike, r: npt.ArrayLi
             if samplePoint[0] > img.shape[1]-1 or samplePoint[1] > img.shape[0]-1 or samplePoint[0] <= 0 or samplePoint[1] <= 0:
                 break
             color = img[samplePoint[1]][samplePoint[0]]
-            t.color(color[2], color[1], color[0])
+            # t.color(color[2], color[1], color[0])
+            fasterChangeColor(t, color[2], color[1], color[0])
             t.forward(delta)
+
 
 def getDetailImg(img: np.ndarray) -> np.ndarray:
     ## fft
@@ -216,8 +223,12 @@ def drawImage(t: Turtle, path: str) -> None:
     sW = (1280) / img.shape[1]  
     scaler = sW if sW < sH else sH 
     img = cv2.resize(img,None,fx=scaler, fy=scaler, interpolation = cv2.INTER_CUBIC)
+    # Reduce aliasing
+    img = cv2.filter2D(img, -1, GaussianKernel(5, 1))
+
     torigin = np.array([0,0])
     tmax = np.array([0,0])
+
 
     ## get detail image
     imgG = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -234,11 +245,11 @@ def drawImage(t: Turtle, path: str) -> None:
         tmax = torigin + np.array([1580, img.shape[0]])
 
 
-    moveTurtle(t, torigin)
+    
     turtle.tracer(10000 ,0)
     starTime = time.time()
     
-    itterGen = 1500
+    itterGen = 3000
     for i in range(itterGen):
         p1 = randomPointonRect(torigin, tmax)
         p2 = randomPointonRect(torigin, tmax)
@@ -247,7 +258,7 @@ def drawImage(t: Turtle, path: str) -> None:
         moveTurtle(t, p1)
         t.setheading( t.towards(p2[0],p2[1]) )
         delta = 5 
-        t.pensize(16*(1.2-(i/itterGen)**1))
+        t.pensize(16*(1.2-(i/itterGen)**2.2))
         step = np.array([0.5*delta*cos(t.heading()), 0.5*delta*sin(t.heading())])
         while 1 :
             tpos = np.array(t.pos())
@@ -260,8 +271,10 @@ def drawImage(t: Turtle, path: str) -> None:
             if samplePoint[0] > img.shape[1]-1 or samplePoint[1] > img.shape[0]-1 or samplePoint[0] <= 0 or samplePoint[1] <= 0:
                 break
             color = img[samplePoint[1]][samplePoint[0]]
-            t.color(color[2], color[1], color[0])
+            # t.color(color[2], color[1], color[0])
+            fasterChangeColor(t, color[2], color[1], color[0])
             t.forward(delta)
+
     
     turtle.update()
     end1 = time.time()
@@ -269,7 +282,7 @@ def drawImage(t: Turtle, path: str) -> None:
     print("First part done")
 
     detial_size = 20
-    for i in range(1000):
+    for i in range(500):
         maxidx = imgG.argmax()
         maxidx = np.unravel_index(maxidx, imgG.shape)
         obox = np.array([maxidx[1]-detial_size/2, maxidx[0]-detial_size/2])
@@ -284,6 +297,7 @@ def drawImage(t: Turtle, path: str) -> None:
         obox += torigin
         rbox += torigin
         drawDetailInBox(t, img, obox, rbox, torigin)
+ 
 
 
     turtle.update()    
@@ -297,6 +311,10 @@ def drawImage(t: Turtle, path: str) -> None:
     print ("Tatle time used  : ",endTime - starTime)
     print("Done")
 
+def drawIm() -> None:
+    t = Turtle()
+    drawImage(t, "fr.jpg")
+
 
 def main():
     
@@ -306,7 +324,11 @@ def main():
     t = Turtle()
     turtle.tracer(30, 1)
     turtle.colormode(255)
+    t.setundobuffer(None)
+    turtle.setundobuffer(None)
     drawDivider(t)
+
+ 
 
     moveTurtle(t, (55, 220))
     peanoCurve(t, 1, 5, 300)
@@ -318,10 +340,13 @@ def main():
     drawequilateralTriangle(t, 200)
     turtle.update()
 
-    drawImage(t, "lico.jpg")
+    # drawImage(t, "fr.jpg")
+    cProfile.run('drawIm()','restate')
+
+
 
     turtle.update()
-    screen.exitonclick()
+    turtle.done()
 
 
 if __name__ == "__main__":
