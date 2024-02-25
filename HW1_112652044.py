@@ -14,6 +14,8 @@ import cv2
 import numpy as np
 import random
 import time
+import numpy.typing as npt
+
 
 
 SCREEN_WIDTH = 1580
@@ -24,7 +26,7 @@ screen = turtle.Screen()
 def setupScreen() -> None:
     screen.screensize(SCREEN_WIDTH, SCREEN_HEIGHT)
     screen.setup(SCREEN_WIDTH, SCREEN_HEIGHT)
-    screen.setworldcoordinates(0,0,SCREEN_WIDTH,SCREEN_HEIGHT)
+    screen.setworldcoordinates(0,SCREEN_HEIGHT,SCREEN_WIDTH,0)
 
 def drawSquare(t: Turtle, o: tuple[float], r: tuple[float]) -> None:
     moveTurtle(t, o)
@@ -43,7 +45,7 @@ def drawDivider(t: Turtle) -> None:
     moveTurtle(t, (300, 0))
     t.goto(300, SCREEN_HEIGHT)
 
-def moveTurtle(t: Turtle, dest: tuple[float]) -> None:
+def moveTurtle(t: Turtle, dest: npt.ArrayLike) -> None:
     t.up()
     t.goto(dest)
     t.down()
@@ -119,10 +121,10 @@ def cardioid(t: Turtle, r: float, n: int, v: int = 2) -> None:
 def drawequilateralTriangle(t: Turtle, r: float) -> None:
     o = t.pos()
     t.goto(o[0]+r, o[1])
-    t.goto(o[0]+r/2, o[1]+r*math.sqrt(3)/2)
+    t.goto(o[0]+r/2, o[1]-r*math.sqrt(3)/2)
     t.goto(o)
 
-def randomPointonRect(o: tuple[float], r: tuple[float]) -> tuple[float]:
+def randomPointonRect(o: tuple[float], r: tuple[float]) -> npt.ArrayLike:
     # generate a random point on the rectangle side 
     # o: origin, r: right top
     # return: (x, y)
@@ -130,61 +132,170 @@ def randomPointonRect(o: tuple[float], r: tuple[float]) -> tuple[float]:
     h = r[1] - o[1]
     if random.random() < w / (w + h):
         # w
-        return (random.uniform(o[0], r[0]), random.choice([o[1], r[1]]))
+        return np.array([random.uniform(o[0], r[0]), random.choices([o[1], r[1]])[0]])
     else:
-        return (random.choice([o[0], r[0]]), random.uniform(o[1], r[1]))
+        return np.array([random.choices([o[0], r[0]])[0], random.uniform(o[1], r[1])])
 
-def length(p1: tuple[float], p2: tuple[float]) -> float:
-    return math.sqrt((p1[0]-p2[0])**2 + (p1[1]-p2[1])**2)
+def GaussianKernel(size: int, sigma: float) -> np.ndarray:
+    '''
+    Generate a Gaussian kernel.
+
+    Parameters:
+    size (int): The size of the kernel.
+    sigma (float): The standard deviation of the Gaussian distribution.
+
+    Returns:
+    np.ndarray: The generated Gaussian kernel.
+    '''
+    kernel = np.zeros((size, size))
+    for i in range(size):
+        for j in range(size):
+            kernel[i][j] = math.exp(-((i-size//2)**2+(j-size//2)**2)/(2*sigma**2))
+    return kernel / kernel.sum()
+
+def drawDetailInBox(t: Turtle, img: np.ndarray, o: npt.ArrayLike, r: npt.ArrayLike, torigin: npt.ArrayLike) -> None:
     
+    moveTurtle(t, o)
+
+    for _ in range(100) :
+        p1 = randomPointonRect(o, r)
+        p2 = randomPointonRect(o, r)
+        if (p1[0] - p2[0]) * (p1[1] - p2[1]) == 0:
+            continue
+        moveTurtle(t, p1)
+        t.setheading( t.towards(p2[0],p2[1]))
+        delta = 5
+        t.pensize(2)
+
+        step = np.array([0.5*delta*cos(t.heading()), 0.5*delta*sin(t.heading())])
+        while 1 :
+            tpos = np.array(t.pos())
+            samplePoint = tpos + step
+            if samplePoint[0] > r[0] or samplePoint[0] < o[0] or samplePoint[1] > r[1] or samplePoint[1] < o[1]:
+                break
+            samplePoint = samplePoint - torigin
+            samplePoint = samplePoint.astype(int)
+            if samplePoint[0] > img.shape[1]-1 or samplePoint[1] > img.shape[0]-1 or samplePoint[0] <= 0 or samplePoint[1] <= 0:
+                break
+            color = img[samplePoint[1]][samplePoint[0]]
+            t.color(color[2], color[1], color[0])
+            t.forward(delta)
+
+def getDetailImg(img: np.ndarray) -> np.ndarray:
+    ## fft
+    f = np.fft.fft2(img)
+    fshift = np.fft.fftshift(f)
+
+    rows, cols = img.shape
+    crow,ccol = rows//2 , cols//2
+    fshift[crow-30:crow+30, ccol-30:ccol+30] = 0
+    
+    # ## magnitude spectrum
+    # magnitude_spectrum = 20*np.log(np.abs(fshift))
+    # cv2.imwrite("magnitude_spectrum.jpg", magnitude_spectrum)
+
+    # idft
+    f_ishift = np.fft.ifftshift(fshift)
+    img_back = np.fft.ifft2(f_ishift)
+    img_back = np.abs(img_back)
+
+    # cv2.imwrite("fliter0.jpg", img_back)
+
+    ## Gaussian blur
+    kernel = GaussianKernel(5, 1)
+    imgG = cv2.filter2D(img_back, -1, kernel)
+
+    return imgG
+
+
 def drawImage(t: Turtle, path: str) -> None:
+   
+    
     img = cv2.imread(path)
-    sH = (720*10) / img.shape[0]
-    sW = (1280*10) / img.shape[1]  
+    sH = (720) / img.shape[0]
+    sW = (1280) / img.shape[1]  
     scaler = sW if sW < sH else sH 
     img = cv2.resize(img,None,fx=scaler, fy=scaler, interpolation = cv2.INTER_CUBIC)
-    torigin = (0,0)
-    tmax =(0,0)
+    torigin = np.array([0,0])
+    tmax = np.array([0,0])
 
-    print (img.shape)
-    print (300 + (1280-img.shape[1]/10)/2)
-    if sH < sW : # W  ss
-        torigin = (300 + (1280-img.shape[1]/10)/2, 0)
-        tmax = (torigin[0] + img.shape[1]/10 , 720)
-    else: # H ss
-        torigin = (300,(720-img.shape[0]/10)/2)
-        tmax = (1580, torigin[1] + img.shape[0]/10)
+    ## get detail image
+    imgG = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    imgG = getDetailImg(imgG)
     
-    print (torigin, tmax)
+    # cv2.imwrite("fliter1.jpg", imgG)
+
+
+    if sH < sW : # W  ss
+        torigin = np.array([300 + (1280-img.shape[1])/2, 0])
+        tmax = torigin + np.array([img.shape[1], 720])
+    else: # H ss
+        torigin = np.array([300,(720-img.shape[0])/2])
+        tmax = torigin + np.array([1580, img.shape[0]])
+
+
     moveTurtle(t, torigin)
-
-    t.pensize(3)
-    turtle.tracer(2000, 0)
-
-    for _ in range(3000):
+    turtle.tracer(10000 ,0)
+    starTime = time.time()
+    
+    itterGen = 1500
+    for i in range(itterGen):
         p1 = randomPointonRect(torigin, tmax)
         p2 = randomPointonRect(torigin, tmax)
         if (p1[0] - p2[0]) * (p1[1] - p2[1]) == 0:
             continue
         moveTurtle(t, p1)
-        t.setheading( t.towards(p2) )
+        t.setheading( t.towards(p2[0],p2[1]) )
         delta = 5 
+        t.pensize(16*(1.2-(i/itterGen)**1))
+        step = np.array([0.5*delta*cos(t.heading()), 0.5*delta*sin(t.heading())])
         while 1 :
-            samplePoint = ((t.pos()[0]+0.5*delta*cos(t.heading())), t.pos()[1]+0.5*delta*sin(t.heading()))
-            if samplePoint[0] > tmax[0] or samplePoint[0] < torigin[0] or samplePoint[1] > tmax[1] or samplePoint[1] < torigin[1]:
+            tpos = np.array(t.pos())
+            samplePoint =  tpos + step
+            samplePoint = np.clip(samplePoint, torigin, tmax)
+            if np.array_equal(samplePoint, torigin) or np.array_equal(samplePoint, tmax):
                 break
-            samplePoint = ((samplePoint[0]-torigin[0])*10, (samplePoint[1]-torigin[1])*10)
-            sampleX = int(samplePoint[0])
-            sampleY = int(samplePoint[1])
-            sampleY = img.shape[0] - sampleY
-            if sampleX > img.shape[1]-1 or sampleY > img.shape[0]-1 or sampleX <= 0 or sampleY <= 0:
+            samplePoint = samplePoint - torigin
+            samplePoint = samplePoint.astype(int)
+            if samplePoint[0] > img.shape[1]-1 or samplePoint[1] > img.shape[0]-1 or samplePoint[0] <= 0 or samplePoint[1] <= 0:
                 break
-            color = img[sampleY][sampleX]
+            color = img[samplePoint[1]][samplePoint[0]]
             t.color(color[2], color[1], color[0])
             t.forward(delta)
-            
-    t.pensize(1)
+    
     turtle.update()
+    end1 = time.time()
+
+    print("First part done")
+
+    detial_size = 20
+    for i in range(1000):
+        maxidx = imgG.argmax()
+        maxidx = np.unravel_index(maxidx, imgG.shape)
+        obox = np.array([maxidx[1]-detial_size/2, maxidx[0]-detial_size/2])
+        rbox = np.array([maxidx[1]+detial_size/2, maxidx[0]+detial_size/2])
+        
+        obox[0] = max(0, min(obox[0], imgG.shape[1]))
+        obox[1] = max(0, min(obox[1], imgG.shape[0]))
+        rbox[0] = max(0, min(rbox[0], imgG.shape[1]))
+        rbox[1] = max(0, min(rbox[1], imgG.shape[0]))
+
+        imgG[int(obox[1]):int(rbox[1]), int(obox[0]):int(rbox[0])] = 0
+        obox += torigin
+        rbox += torigin
+        drawDetailInBox(t, img, obox, rbox, torigin)
+
+
+    turtle.update()    
+    # cv2.imwrite("fliter2.jpg", imgG)
+
+    
+    t.pensize(1)
+    endTime = time.time()
+    print ("Image time used  : ",end1 - starTime)
+    print ("Detail time used : ",endTime - end1)
+    print ("Tatle time used  : ",endTime - starTime)
+    print("Done")
 
 
 def main():
@@ -197,14 +308,13 @@ def main():
     turtle.colormode(255)
     drawDivider(t)
 
-    moveTurtle(t, (55, 500))
-    t.left(90)
+    moveTurtle(t, (55, 220))
     peanoCurve(t, 1, 5, 300)
 
     moveTurtle(t, (230, 360))
     cardioid(t, 40, 500,2)
 
-    moveTurtle(t, (55, 40))
+    moveTurtle(t, (55, 680))
     drawequilateralTriangle(t, 200)
     turtle.update()
 
@@ -212,6 +322,7 @@ def main():
 
     turtle.update()
     screen.exitonclick()
+
 
 if __name__ == "__main__":
     main()
