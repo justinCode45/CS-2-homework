@@ -52,9 +52,18 @@ def drawDivider(t: Turtle) -> None:
     t.goto(300, SCREEN_HEIGHT)
 
 def moveTurtle(t: Turtle, dest: npt.ArrayLike) -> None:
-    t.up()
+
+    if t._drawing :
+        t._newLine()
+        t._drawing = False
+    t._update()
+
     t.goto(dest)
-    t.down()
+    
+    t._newLine()
+    t._drawing = True
+    t._update()
+
 
 def peanoCurve(t: Turtle, dirction: bool, order: int, length: float) -> None:
     '''
@@ -217,7 +226,7 @@ def getDetailImg(img: np.ndarray) -> np.ndarray:
 
 def drawImage(t: Turtle, path: str) -> None:
    
-    
+    t.setundobuffer(None)
     img = cv2.imread(path)
     sH = (720) / img.shape[0]
     sW = (1280) / img.shape[1]  
@@ -282,7 +291,7 @@ def drawImage(t: Turtle, path: str) -> None:
     print("First part done")
 
     detial_size = 20
-    for i in range(500):
+    for i in range(100):
         maxidx = imgG.argmax()
         maxidx = np.unravel_index(maxidx, imgG.shape)
         obox = np.array([maxidx[1]-detial_size/2, maxidx[0]-detial_size/2])
@@ -325,7 +334,7 @@ def main():
     turtle.tracer(30, 1)
     turtle.colormode(255)
     t.setundobuffer(None)
-    turtle.setundobuffer(None)
+
     drawDivider(t)
 
  
@@ -340,13 +349,13 @@ def main():
     drawequilateralTriangle(t, 200)
     turtle.update()
 
-    # drawImage(t, "fr.jpg")
-    cProfile.run('drawIm()','restate')
+    drawImage(t, "fr.jpg")
+    # cProfile.run('drawIm()','restate')
 
 
 
     turtle.update()
-    turtle.done()
+    # turtle.done()
 
 
 if __name__ == "__main__":
