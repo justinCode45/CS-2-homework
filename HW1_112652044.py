@@ -16,20 +16,27 @@ import random
 import time
 import numpy.typing as npt
 import cProfile
+import threading
+import queue
+
 
 
 SCREEN_WIDTH = 1580
 SCREEN_HEIGHT = 720
-screen = turtle.Screen()
 
-def fasterChangeColor(t: Turtle, r: int, g: int, b: int) -> None:
-    t._newLine()
-    temp = t._colorstr((r, g, b)) 
-    t._fillcolor = temp
-    t._pencolor = temp
-    t._update()
+class Job:
+    def __init__(self, func, *args):
+        self.func = func
+        self.args = args
+canvasQueue = queue.Queue()
+
+    
+
+def canvasLine(canvas, start, end, color,w=1):
+    canvas.create_line(start[0], start[1], end[0], end[1], fill=color, width=w)
 
 def setupScreen() -> None:
+    screen = turtle.Screen()
     screen.screensize(SCREEN_WIDTH, SCREEN_HEIGHT)
     screen.setup(SCREEN_WIDTH, SCREEN_HEIGHT)
     screen.setworldcoordinates(0,SCREEN_HEIGHT,SCREEN_WIDTH,0)
@@ -63,7 +70,6 @@ def moveTurtle(t: Turtle, dest: npt.ArrayLike) -> None:
     t._newLine()
     t._drawing = True
     t._update()
-
 
 def peanoCurve(t: Turtle, dirction: bool, order: int, length: float) -> None:
     '''
@@ -170,7 +176,6 @@ def GaussianKernel(size: int, sigma: float) -> np.ndarray:
 
 def drawDetailInBox(t: Turtle, img: np.ndarray, o: npt.ArrayLike, r: npt.ArrayLike, torigin: npt.ArrayLike) -> None:
     
-
     for _ in range(100) :
         p1 = randomPointonRect(o, r)
         p2 = randomPointonRect(o, r)
@@ -180,7 +185,6 @@ def drawDetailInBox(t: Turtle, img: np.ndarray, o: npt.ArrayLike, r: npt.ArrayLi
         t.setheading( t.towards(p2[0],p2[1]))
         delta = 5
         t.pensize(2)
-
         step = np.array([0.5*delta*cos(t.heading()), 0.5*delta*sin(t.heading())])
         while 1 :
             tpos = np.array(t.pos())
@@ -192,11 +196,38 @@ def drawDetailInBox(t: Turtle, img: np.ndarray, o: npt.ArrayLike, r: npt.ArrayLi
             if samplePoint[0] > img.shape[1]-1 or samplePoint[1] > img.shape[0]-1 or samplePoint[0] <= 0 or samplePoint[1] <= 0:
                 break
             color = img[samplePoint[1]][samplePoint[0]]
-            # t.color(color[2], color[1], color[0])
-            fasterChangeColor(t, color[2], color[1], color[0])
+            t.color(color[2], color[1], color[0])
             t.forward(delta)
 
+def cavanDrawDetailInBox(c, img: np.ndarray, o: npt.ArrayLike, r: npt.ArrayLike, torigin: npt.ArrayLike) -> None:
+    
+    for i in range(100):
+        p1 = randomPointonRect(o, r)
+        p2 = randomPointonRect(o, r)
+        if (p1[0] - p2[0]) * (p1[1] - p2[1]) == 0:
+            continue
+        
+        directionVec = (p2 - p1)
+        directionVec = directionVec / np.linalg.norm(directionVec)
+        delta = 5 
+        # t.pensize(16*(1.2-(i/itterGen)**2.2))
+        step = directionVec * delta/2
 
+        while 1 :
+            samplePoint =  p1 + step
+            if samplePoint[0] > r[0] or samplePoint[0] < o[0] or samplePoint[1] > r[1] or samplePoint[1] < o[1]:
+                break
+            samplePoint = samplePoint - torigin
+            samplePoint = samplePoint.astype(int)
+            if samplePoint[0] > img.shape[1]-1 or samplePoint[1] > img.shape[0]-1 or samplePoint[0] <= 0 or samplePoint[1] <= 0:
+                break
+            color = img[samplePoint[1]][samplePoint[0]]
+            job = Job(canvasLine, c, p1, p1+2*step, "#%02x%02x%02x" % (color[2], color[1], color[0]))
+            # canvasLine(c, p1, p1+2*step, "#%02x%02x%02x" % (color[2], color[1], color[0]))
+            canvasQueue.put(job)
+            p1 = p1 + 2*step
+        # print (i)
+            
 def getDetailImg(img: np.ndarray) -> np.ndarray:
     ## fft
     f = np.fft.fft2(img)
@@ -206,16 +237,12 @@ def getDetailImg(img: np.ndarray) -> np.ndarray:
     crow,ccol = rows//2 , cols//2
     fshift[crow-30:crow+30, ccol-30:ccol+30] = 0
     
-    # ## magnitude spectrum
-    # magnitude_spectrum = 20*np.log(np.abs(fshift))
-    # cv2.imwrite("magnitude_spectrum.jpg", magnitude_spectrum)
-
     # idft
     f_ishift = np.fft.ifftshift(fshift)
     img_back = np.fft.ifft2(f_ishift)
     img_back = np.abs(img_back)
 
-    # cv2.imwrite("fliter0.jpg", img_back)
+    cv2.imwrite("fliter0.jpg", img_back)
 
     ## Gaussian blur
     kernel = GaussianKernel(5, 1)
@@ -223,29 +250,21 @@ def getDetailImg(img: np.ndarray) -> np.ndarray:
 
     return imgG
 
-
 def drawImage(t: Turtle, path: str) -> None:
    
     t.setundobuffer(None)
+    print ("Start")
+    # load image , resize , Gaussian blur
     img = cv2.imread(path)
     sH = (720) / img.shape[0]
     sW = (1280) / img.shape[1]  
     scaler = sW if sW < sH else sH 
     img = cv2.resize(img,None,fx=scaler, fy=scaler, interpolation = cv2.INTER_CUBIC)
-    # Reduce aliasing
     img = cv2.filter2D(img, -1, GaussianKernel(5, 1))
 
+    # compute the position of the image
     torigin = np.array([0,0])
     tmax = np.array([0,0])
-
-
-    ## get detail image
-    imgG = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    imgG = getDetailImg(imgG)
-    
-    # cv2.imwrite("fliter1.jpg", imgG)
-
-
     if sH < sW : # W  ss
         torigin = np.array([300 + (1280-img.shape[1])/2, 0])
         tmax = torigin + np.array([img.shape[1], 720])
@@ -253,12 +272,15 @@ def drawImage(t: Turtle, path: str) -> None:
         torigin = np.array([300,(720-img.shape[0])/2])
         tmax = torigin + np.array([1580, img.shape[0]])
 
-
+    ## get detail image
+    imgG = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    imgG = getDetailImg(imgG)
     
     turtle.tracer(10000 ,0)
     starTime = time.time()
     
-    itterGen = 3000
+    # draw the image
+    itterGen = 100
     for i in range(itterGen):
         p1 = randomPointonRect(torigin, tmax)
         p2 = randomPointonRect(torigin, tmax)
@@ -280,16 +302,14 @@ def drawImage(t: Turtle, path: str) -> None:
             if samplePoint[0] > img.shape[1]-1 or samplePoint[1] > img.shape[0]-1 or samplePoint[0] <= 0 or samplePoint[1] <= 0:
                 break
             color = img[samplePoint[1]][samplePoint[0]]
-            # t.color(color[2], color[1], color[0])
-            fasterChangeColor(t, color[2], color[1], color[0])
+            t.color(color[2], color[1], color[0])
             t.forward(delta)
 
-    
     turtle.update()
     end1 = time.time()
-
     print("First part done")
 
+    # draw the detail
     detial_size = 20
     for i in range(100):
         maxidx = imgG.argmax()
@@ -306,13 +326,9 @@ def drawImage(t: Turtle, path: str) -> None:
         obox += torigin
         rbox += torigin
         drawDetailInBox(t, img, obox, rbox, torigin)
- 
-
 
     turtle.update()    
-    # cv2.imwrite("fliter2.jpg", imgG)
-
-    
+    # reste the pen size end or function
     t.pensize(1)
     endTime = time.time()
     print ("Image time used  : ",end1 - starTime)
@@ -320,24 +336,169 @@ def drawImage(t: Turtle, path: str) -> None:
     print ("Tatle time used  : ",endTime - starTime)
     print("Done")
 
-def drawIm() -> None:
-    t = Turtle()
-    drawImage(t, "fr.jpg")
+def canvasDrawImage(c , path: str) -> None:
+   
+    # load image , resize , Gaussian blur
+    img = cv2.imread(path)
+    sH = (720) / img.shape[0]
+    sW = (1280) / img.shape[1]  
+    scaler = sW if sW < sH else sH 
+    img = cv2.resize(img,None,fx=scaler, fy=scaler, interpolation = cv2.INTER_CUBIC)
+    img = cv2.filter2D(img, -1, GaussianKernel(5, 1))
 
+    # compute the position of the image
+    torigin = np.array([0,0])
+    tmax = np.array([0,0])
+    if sH < sW : # W  ss
+        torigin = np.array([300 + (1280-img.shape[1])/2, 0])
+        tmax = torigin + np.array([img.shape[1], 720])
+    else: # H ss
+        torigin = np.array([300,(720-img.shape[0])/2])
+        tmax = torigin + np.array([1580, img.shape[0]])
+
+    ## get detail image
+    imgG = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    imgG = getDetailImg(imgG)
+    
+
+    starTime = time.time()
+    
+    # draw the image
+    itterGen = 3000
+    for i in range(itterGen):
+        p1 = randomPointonRect(torigin, tmax)
+        p2 = randomPointonRect(torigin, tmax)
+        if (p1[0] - p2[0]) * (p1[1] - p2[1]) == 0:
+            continue
+        
+        directionVec = (p2 - p1)
+        directionVec = directionVec / np.linalg.norm(directionVec)
+        delta = 5 
+        step = directionVec * delta/2
+
+        while 1 :
+            samplePoint =  p1 + step
+            samplePoint = np.clip(samplePoint, torigin, tmax)
+            if np.array_equal(samplePoint, torigin) or np.array_equal(samplePoint, tmax):
+                break
+            samplePoint = samplePoint - torigin
+            samplePoint = samplePoint.astype(int)
+            if samplePoint[0] > img.shape[1]-1 or samplePoint[1] > img.shape[0]-1 or samplePoint[0] <= 0 or samplePoint[1] <= 0:
+                break
+            color = img[samplePoint[1]][samplePoint[0]]
+            job = Job(canvasLine, c, p1, p1+2*step, "#%02x%02x%02x" % (color[2], color[1], color[0]), (16*(1.2-(i/itterGen)**2.2)))
+            # canvasLine(c, p1, p1+2*step, "#%02x%02x%02x" % (color[2], color[1], color[0]), (16*(1.2-(i/itterGen)**2.2)) )
+            canvasQueue.put(job)
+            p1 = p1 + 2*step
+        if i % 100 == 0:
+            job = Job(c.update)
+            canvasQueue.put(job)
+
+    end1 = time.time()
+    print("First part done")
+
+    # draw the detail
+    detial_size = 20
+    for i in range(20):
+        maxidx = imgG.argmax()
+        maxidx = np.unravel_index(maxidx, imgG.shape)
+        obox = np.array([maxidx[1]-detial_size/2, maxidx[0]-detial_size/2])
+        rbox = np.array([maxidx[1]+detial_size/2, maxidx[0]+detial_size/2])
+
+        obox[0] = max(0, min(obox[0], imgG.shape[1]))
+        obox[1] = max(0, min(obox[1], imgG.shape[0]))
+        rbox[0] = max(0, min(rbox[0], imgG.shape[1]))
+        rbox[1] = max(0, min(rbox[1], imgG.shape[0]))
+
+        imgG[int(obox[1]):int(rbox[1]), int(obox[0]):int(rbox[0])] = 0
+        obox += torigin
+        rbox += torigin
+        cavanDrawDetailInBox(c, img, obox, rbox, torigin)
+
+    # reste the pen size end or function
+    endTime = time.time()
+    print ("Image time used  : ",end1 - starTime)
+    print ("Detail time used : ",endTime - end1)
+    print ("Tatle time used  : ",endTime - starTime)
+    print("Done")
+
+def drawImPixel(t: Turtle,path :str) -> None:
+
+    t.setundobuffer(None)
+    img = cv2.imread(path)
+    sH = (720) / img.shape[0]
+    sW = (1280) / img.shape[1]  
+    scaler = sW if sW < sH else sH 
+    img = cv2.resize(img,None,fx=scaler, fy=scaler, interpolation = cv2.INTER_CUBIC)
+
+    torigin = np.array([0,0])
+    tmax = np.array([0,0])
+    if sH < sW : # W  ss
+        torigin = np.array([300 + (1280-img.shape[1])/2, 0])
+        tmax = torigin + np.array([img.shape[1], 720])
+    else: # H ss
+        torigin = np.array([300,(720-img.shape[0])/2])
+        tmax = torigin + np.array([1580, img.shape[0]])
+
+    turtle.tracer(10000 ,0)
+
+    moveTurtle(t, torigin)
+
+    start = time.time()
+
+    for i in range(img.shape[0]):
+        for j in range(img.shape[1]):
+            color = img[i][j]
+            t.color(color[2], color[1], color[0])
+            t.begin_fill()
+            moveTurtle(t, torigin+(j,i))
+            t.goto(torigin[0]+j, torigin[1]+i+1)
+            t.goto(torigin[0]+j+1, torigin[1]+i+1)
+            t.goto(torigin[0]+j+1, torigin[1]+i)
+            t.end_fill()
+    
+    end = time.time()
+
+    print("Time used : ", end - start)
+
+def test(c) -> None:
+    pass
+    # while 1:    
+    #     def drawRandomLine(c) -> None:
+    #         canvasLine(c, (random.randint(0, 1580), random.randint(0, 720)), (random.randint(0, 1580), random.randint(0, 720)), "#%02x%02x%02x" % (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)), random.randint(1, 10))
+        
+    #     job = Job(drawRandomLine, c)
+    #     canvasQueue.put(job)
+    #     job = Job(c.update)
+    #     canvasQueue.put(job)
+    #     time.sleep(0.1)
+        
+def mainloop(root,canvas) -> None:
+    while 1:
+        job = canvasQueue.get()
+        if job is None:
+            break
+        job.func(*job.args)
+    
+    root.after(30, mainloop, root, canvas)
 
 def main():
     
+    print ("If the program is not responding, please wait for a while, the program is drawing the image.")
+    print ("When after the image is drawn, the program will play the animation.")
+    print ("Exit the program by closing the window. If it is not responding, please use ctrl+c to terminate the program.")
+
     random.seed(time.time())
     setupScreen()
-
+    
     t = Turtle()
     turtle.tracer(30, 1)
     turtle.colormode(255)
     t.setundobuffer(None)
+    canvas = turtle.getcanvas()
+    root = canvas.winfo_toplevel()
 
     drawDivider(t)
-
- 
 
     moveTurtle(t, (55, 220))
     peanoCurve(t, 1, 5, 300)
@@ -349,13 +510,18 @@ def main():
     drawequilateralTriangle(t, 200)
     turtle.update()
 
-    drawImage(t, "fr.jpg")
-    # cProfile.run('drawIm()','restate')
+    
+    # drawImage(t, "fr.jpg")
+    # drawImPixel(t, "fr.jpg")
+    # cProfile.run('drawIm()','output.pstats')
+
+    threading.Thread(target=test, args=(canvas,)).start()
+    threading.Thread(target=canvasDrawImage, args=(canvas, "fr.jpg")).start()
+
+    root.after(0, mainloop, root, canvas)
+    turtle.done()
 
 
-
-    turtle.update()
-    # turtle.done()
 
 
 if __name__ == "__main__":
