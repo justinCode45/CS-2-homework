@@ -459,7 +459,7 @@ def animetion(c) -> None:
             np.array([-a*math.sqrt(3)/2,-a/2])]
     theta = 0.2
     rotateMat = np.array([[cos(theta),-sin(theta)],[sin(theta),cos(theta)]])
-    
+    c.create_oval(150-90, 590-90, 150+90, 590+90)
 
     def _animate(obj=obj, rotateMat=rotateMat):
         obj = [rotateMat @ i for i in obj]
@@ -469,7 +469,7 @@ def animetion(c) -> None:
         canvasLine(c, coorobj[1], coorobj[2], "#000000", 2, "anime")
         canvasLine(c, coorobj[2], coorobj[0], "#000000", 2, "anime")
         c.update()
-        root.after(50, _animate, obj, rotateMat)
+        root.after(300, _animate, obj, rotateMat)
 
     root.after(0, _animate, obj, rotateMat)
 
@@ -497,9 +497,8 @@ def main():
     moveTurtle(t, (230, 360))
     cardioid(t, 40, 500,2)
 
-    moveTurtle(t, (150, 600+90))
-    # t.dot(10, "black")
-    t.circle(90)
+
+
     turtle.update()
 
     # drawImage(t, "fr.jpg")
