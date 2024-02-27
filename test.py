@@ -1,41 +1,23 @@
+import threading
+import time
 
+def aa():
+    event.wait()            # 等待事件被觸發
+    event.clear()           # 觸發後將事件回歸原本狀態
+    for i in range(1,6):
+        print('A:',i)
+        time.sleep(0.5)
 
-import turtle
-from turtle import Turtle
-import math
+def bb():
+    for i in range(10,60,10):
+        if i == 30:
+            event.set()     # 觸發事件
+        print('B:',i)
+        time.sleep(0.5)
 
-def fasterChangeColor(t: Turtle, r: int, g: int, b: int) -> None:
-    t._newLine()
-    temp = t._colorstr((r, g, b)) 
-    t._fillcolor = temp
-    t._pencolor = temp
-    t._update()
+event = threading.Event()   # 註冊事件
+a = threading.Thread(target=aa)
+b = threading.Thread(target=bb)
 
-t = turtle.Turtle()
-t.pensize(10)
-
-turtle.colormode(255)
-
-screen = turtle.Screen()
-turtle.tracer(1, 100)
-
-def num_to_rgb(val, max_val=3):
-    i = (val * 255 / max_val)
-    r = round(math.sin(0.024 * i + 0) * 127 + 128)
-    g = round(math.sin(0.024 * i + 2) * 127 + 128)
-    b = round(math.sin(0.024 * i + 4) * 127 + 128)
-    return (r,g,b)
-
-print (turtle.delay())
-
-
-print (screen._tracing)
-for i in range(10000):
-    fasterChangeColor(t, *num_to_rgb(i))
-    # t.color(num_to_rgb(i))
-    t.forward(100)
-    # t._newLine()    
-    t.left(123)
-
-print (screen._tracing)
-turtle.done()
+a.start()
+b.start()

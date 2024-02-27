@@ -24,16 +24,11 @@ import queue
 SCREEN_WIDTH = 1580
 SCREEN_HEIGHT = 720
 
-class Job:
-    def __init__(self, func, *args):
-        self.func = func
-        self.args = args
-canvasQueue = queue.Queue()
 
     
 
-def canvasLine(canvas, start, end, color,w=1):
-    canvas.create_line(start[0], start[1], end[0], end[1], fill=color, width=w)
+def canvasLine(canvas, start, end, color,w=1, tag=None):
+    canvas.create_line(start[0], start[1], end[0], end[1], fill=color, width=w,tags=tag)
 
 def setupScreen() -> None:
     screen = turtle.Screen()
@@ -222,9 +217,7 @@ def cavanDrawDetailInBox(c, img: np.ndarray, o: npt.ArrayLike, r: npt.ArrayLike,
             if samplePoint[0] > img.shape[1]-1 or samplePoint[1] > img.shape[0]-1 or samplePoint[0] <= 0 or samplePoint[1] <= 0:
                 break
             color = img[samplePoint[1]][samplePoint[0]]
-            job = Job(canvasLine, c, p1, p1+2*step, "#%02x%02x%02x" % (color[2], color[1], color[0]))
-            # canvasLine(c, p1, p1+2*step, "#%02x%02x%02x" % (color[2], color[1], color[0]))
-            canvasQueue.put(job)
+            canvasLine(c, p1, p1+2*step, "#%02x%02x%02x" % (color[2], color[1], color[0]))
             p1 = p1 + 2*step
         # print (i)
             
@@ -337,7 +330,7 @@ def drawImage(t: Turtle, path: str) -> None:
     print("Done")
 
 def canvasDrawImage(c , path: str) -> None:
-   
+    
     # load image , resize , Gaussian blur
     img = cv2.imread(path)
     sH = (720) / img.shape[0]
@@ -386,20 +379,16 @@ def canvasDrawImage(c , path: str) -> None:
             if samplePoint[0] > img.shape[1]-1 or samplePoint[1] > img.shape[0]-1 or samplePoint[0] <= 0 or samplePoint[1] <= 0:
                 break
             color = img[samplePoint[1]][samplePoint[0]]
-            job = Job(canvasLine, c, p1, p1+2*step, "#%02x%02x%02x" % (color[2], color[1], color[0]), (16*(1.2-(i/itterGen)**2.2)))
-            # canvasLine(c, p1, p1+2*step, "#%02x%02x%02x" % (color[2], color[1], color[0]), (16*(1.2-(i/itterGen)**2.2)) )
-            canvasQueue.put(job)
+            canvasLine(c, p1, p1+2*step, "#%02x%02x%02x" % (color[2], color[1], color[0]), (16*(1.2-(i/itterGen)**2.2)))
             p1 = p1 + 2*step
-        if i % 100 == 0:
-            job = Job(c.update)
-            canvasQueue.put(job)
+
+        if i % 50 == 0:
+            c.update()  
 
     end1 = time.time()
-    print("First part done")
-
     # draw the detail
     detial_size = 20
-    for i in range(20):
+    for i in range(50):
         maxidx = imgG.argmax()
         maxidx = np.unravel_index(maxidx, imgG.shape)
         obox = np.array([maxidx[1]-detial_size/2, maxidx[0]-detial_size/2])
@@ -420,7 +409,9 @@ def canvasDrawImage(c , path: str) -> None:
     print ("Image time used  : ",end1 - starTime)
     print ("Detail time used : ",endTime - end1)
     print ("Tatle time used  : ",endTime - starTime)
-    print("Done")
+    print ("Done")
+
+    root.after(0, animetion, c)
 
 def drawImPixel(t: Turtle,path :str) -> None:
 
@@ -461,27 +452,29 @@ def drawImPixel(t: Turtle,path :str) -> None:
 
     print("Time used : ", end - start)
 
-def test(c) -> None:
-    pass
-    # while 1:    
-    #     def drawRandomLine(c) -> None:
-    #         canvasLine(c, (random.randint(0, 1580), random.randint(0, 720)), (random.randint(0, 1580), random.randint(0, 720)), "#%02x%02x%02x" % (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)), random.randint(1, 10))
-        
-    #     job = Job(drawRandomLine, c)
-    #     canvasQueue.put(job)
-    #     job = Job(c.update)
-    #     canvasQueue.put(job)
-    #     time.sleep(0.1)
-        
-def mainloop(root,canvas) -> None:
-    while 1:
-        job = canvasQueue.get()
-        if job is None:
-            break
-        job.func(*job.args)
+def animetion(c) -> None:
+    a = 90
+    obj = [ np.array([0,a]), 
+            np.array([a*math.sqrt(3)/2,-a/2]), 
+            np.array([-a*math.sqrt(3)/2,-a/2])]
+    theta = 0.2
+    rotateMat = np.array([[cos(theta),-sin(theta)],[sin(theta),cos(theta)]])
     
-    root.after(30, mainloop, root, canvas)
 
+    def _animate(obj=obj, rotateMat=rotateMat):
+        obj = [rotateMat @ i for i in obj]
+        coorobj = [i + np.array([150, 590]) for i in obj]
+        c.delete("anime")
+        canvasLine(c, coorobj[0], coorobj[1], "#000000", 2, "anime")
+        canvasLine(c, coorobj[1], coorobj[2], "#000000", 2, "anime")
+        canvasLine(c, coorobj[2], coorobj[0], "#000000", 2, "anime")
+        c.update()
+        root.after(50, _animate, obj, rotateMat)
+
+    root.after(0, _animate, obj, rotateMat)
+
+
+    
 def main():
     
     print ("If the program is not responding, please wait for a while, the program is drawing the image.")
@@ -490,14 +483,12 @@ def main():
 
     random.seed(time.time())
     setupScreen()
-    
+
     t = Turtle()
     turtle.tracer(30, 1)
     turtle.colormode(255)
     t.setundobuffer(None)
-    canvas = turtle.getcanvas()
-    root = canvas.winfo_toplevel()
-
+    
     drawDivider(t)
 
     moveTurtle(t, (55, 220))
@@ -506,23 +497,25 @@ def main():
     moveTurtle(t, (230, 360))
     cardioid(t, 40, 500,2)
 
-    moveTurtle(t, (55, 680))
-    drawequilateralTriangle(t, 200)
+    moveTurtle(t, (150, 600+90))
+    # t.dot(10, "black")
+    t.circle(90)
     turtle.update()
 
-    
     # drawImage(t, "fr.jpg")
     # drawImPixel(t, "fr.jpg")
     # cProfile.run('drawIm()','output.pstats')
 
-    threading.Thread(target=test, args=(canvas,)).start()
-    threading.Thread(target=canvasDrawImage, args=(canvas, "fr.jpg")).start()
 
-    root.after(0, mainloop, root, canvas)
+    # root.after(0, canvasDrawImage, canvas, "fr.jpg")
+    root.after(0, animetion, canvas)
     turtle.done()
 
 
 
 
 if __name__ == "__main__":
+    canvas = turtle.getcanvas()
+    root = canvas.winfo_toplevel()
+
     main()
