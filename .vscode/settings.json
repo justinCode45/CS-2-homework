@@ -1,5 +1,6 @@
 {
     "python.analysis.extraPaths": [
-        "./onC/1"
+        "./onC/1",
+        "./HW1"
     ]
 }
