@@ -2,11 +2,19 @@
 # Author : Justin Chen
 # Email Address : justin.sc12@nycu.edu.tw
 # HW Number : 1
-# Description : This program will draw a square with turtle and the size of the square will be 50 and 60.
+# Description : Draw a Peano curve, a cardioid, and an image using turtle graphics.
 # Last Changed : 2024/2/24
-# Dependencies : Python 3.12.2 ,requirements.txt
-# Description : turtle graphics
-# Last Changed : 2024/2/27
+# Dependencies : Python 3.12.2 ,opencv-python, numpy
+# Additional Note :
+#   1. This program is tested on Windows 10 and Docker. 
+#      (Docker image: mcr.microsoft.com/devcontainers/python:1-3.12-bullseye)
+#   2. The program takes about 50~100 seconds to draw a image.
+#   3. After the image is drawn, the program will play the animation. 
+# Note:
+#   1. Moving mouse on the picture will cause the program slow down.
+#      (Since tk canvas)
+#   2. If drawing is too slow or animation is lag,
+#       see the main function and comment some code.
 
 import turtle
 from turtle import Turtle
@@ -20,9 +28,6 @@ import numpy.typing as npt
 
 SCREEN_WIDTH = 1580
 SCREEN_HEIGHT = 720
-
-
-    
 
 def canvasLine(canvas, start, end, color,w=1, tag=None):
     '''
@@ -69,6 +74,7 @@ def moveTurtle(t: Turtle, dest: npt.ArrayLike) -> None:
     if t._drawing :
         t._newLine()
         t._drawing = False
+    
     t._update()
     t.goto(dest)
     t._newLine()
@@ -88,6 +94,8 @@ def peanoCurve(t: Turtle, dirction: bool, order: int, length: float) -> None:
     Returns:
     None
     '''
+    #use recursive to draw the peano curve
+
     mapD = lambda x: 1 if x else -1
 
     if order == 1: 
@@ -143,12 +151,6 @@ def cardioid(t: Turtle, r: float, n: int, v: int = 2) -> None:
     for i in range(n):
         t.goto(turtlepos(i+1))
 
-def drawequilateralTriangle(t: Turtle, r: float) -> None:
-    o = t.pos()
-    t.goto(o[0]+r, o[1])
-    t.goto(o[0]+r/2, o[1]-r*math.sqrt(3)/2)
-    t.goto(o)
-
 def randomPointonRect(o: tuple[float], r: tuple[float]) -> npt.ArrayLike:
     '''
     Generate a random point on a rectangle.
@@ -178,9 +180,122 @@ def GaussianKernel(size: int, sigma: float) -> np.ndarray:
             kernel[i][j] = math.exp(-((i-size//2)**2+(j-size//2)**2)/(2*sigma**2))
     return kernel / kernel.sum()
 
-def drawDetailInBox(t: Turtle, img: np.ndarray, o: npt.ArrayLike, r: npt.ArrayLike, torigin: npt.ArrayLike) -> None:
+def canvasDrawImage(c , path: str) -> None:
+    '''
+    Use canvas to draw an image.
+    '''
+    # load image , resize , Gaussian blur
+    img = cv2.imread(path)
+    sH = (720) / img.shape[0]
+    sW = (1280) / img.shape[1]  
+    scaler = sW if sW < sH else sH 
+    img = cv2.resize(img,None,fx=scaler, fy=scaler, interpolation = cv2.INTER_CUBIC)
+    img = cv2.filter2D(img, -1, GaussianKernel(5, 2))
+
+    # compute the position of the image
+    torigin = np.array([0,0])
+    tmax = np.array([0,0])
+    if sH < sW : # W  ss
+        torigin = np.array([300 + (1280-img.shape[1])/2, 0])
+        tmax = torigin + np.array([img.shape[1], 720])
+    else: # H ss
+        torigin = np.array([300,(720-img.shape[0])/2])
+        tmax = torigin + np.array([1580, img.shape[0]])
+
+    starTime = time.time()
+    
+    # draw the image
+    itterGen = 2500
+    for i in range(itterGen):
+        p1 = randomPointonRect(torigin, tmax)
+        p2 = randomPointonRect(torigin, tmax)
+        if (p1[0] - p2[0]) * (p1[1] - p2[1]) == 0:
+            continue
+        
+        directionVec = (p2 - p1)
+        directionVec = directionVec / np.linalg.norm(directionVec)
+        delta = 5 
+        step = directionVec * delta/2
+
+        while 1 :
+            samplePoint =  p1 + step
+            samplePoint = np.clip(samplePoint, torigin, tmax)
+            if np.array_equal(samplePoint, torigin) or np.array_equal(samplePoint, tmax):
+                break
+            samplePoint = samplePoint - torigin
+            samplePoint = samplePoint.astype(int)
+            if samplePoint[0] > img.shape[1]-1 or samplePoint[1] > img.shape[0]-1 or samplePoint[0] <= 0 or samplePoint[1] <= 0:
+                break
+            color = img[samplePoint[1]][samplePoint[0]]
+            canvasLine(c, p1, p1+2*step, "#%02x%02x%02x" % (color[2], color[1], color[0]), (16*(1.2-(i/itterGen)**2.2)))
+            p1 = p1 + 2*step
+
+        if i % 100 == 0:
+            c.update()  
+
+    # reste the pen size end or function
+    endTime = time.time()
+    print ("Tatle time used  : ",endTime - starTime)
+    print ("Done")
+
+    root.after(0, animation, c)
+
+def animation(c) -> None:
+    '''
+    Animate
+    '''
+    a = 90
+    # Object
+    obj1 = [ [[0,a],[a*math.sqrt(3)/2,-a/2]], 
+             [[a*math.sqrt(3)/2,-a/2],[-a*math.sqrt(3)/2,-a/2]], 
+             [[-a*math.sqrt(3)/2,-a/2],[0,a]]
+        ]
+    obj2 = [[[0,a/2],[a*math.sqrt(3)/4,-a/4]],
+            [[a*math.sqrt(3)/4,-a/4],[-a*math.sqrt(3)/4,-a/4]],
+            [[-a*math.sqrt(3)/4,-a/4],[0,a/2]]
+        ]
+    obj3 = [ [[0,-a],[a*math.sqrt(3)/2,a/2]], 
+             [[a*math.sqrt(3)/2,a/2],[-a*math.sqrt(3)/2,a/2]], 
+             [[-a*math.sqrt(3)/2,a/2],[0,-a]]
+        ]
+    obj4 = [ [[0,a],[a*math.sqrt(3)/2,-a/2]], 
+             [[a*math.sqrt(3)/2,-a/2],[-a*math.sqrt(3)/2,-a/2]], 
+             [[-a*math.sqrt(3)/2,-a/2],[0,a]]
+        ]
+    
+    objList = [obj1,obj2,obj3,obj4]
+    theta = 0.1
+    # Rotation matrix
+    rotateMat1 = np.array([[cos(theta),-sin(theta)],[sin(theta),cos(theta)]])
+    rotateMat2 = np.array([[cos(-2*theta),-sin(-2*theta)],[sin(-2*theta),cos(-2*theta)]])
+    rotateMat3 = np.array([[cos(1.1*theta),-sin(1.1*theta)],[sin(1.1*theta),cos(1.1*theta)]])
+    rotateMat4 = np.array([[cos(1.5*theta),-sin(1.5*theta)],[sin(1.5*theta),cos(1.5*theta)]])
+    matList = [rotateMat1, rotateMat2, rotateMat3, rotateMat4]
+    
+    c.create_oval(150-90, 590-90, 150+90, 590+90)
+    
+    # Animation function for root to call
+    def _animate(objList=objList, matList=matList):
+        # Rotate the object
+        for i in range(len(objList)):
+            objList[i] = [[matList[i] @ point for point in line ]for line in objList[i]]
+        # Clear the canvas
+        c.delete("anime")
+        # Draw the object
+        for obj in objList:
+            for line in obj:
+                c1 = line[0]+np.array([150,590])
+                c2 = line[1]+np.array([150,590])
+                c.create_line(c1[0], c1[1], c2[0], c2[1], fill="black", tags="anime")
+        c.update()
+        root.after(30, _animate, objList, matList)
+
+    root.after(0, _animate, objList, matList)
+
+def _drawDetailInBox(t: Turtle, img: np.ndarray, o: npt.ArrayLike, r: npt.ArrayLike, torigin: npt.ArrayLike) -> None:
     '''
     Use original turtle to draw the detail of the image in the box.
+    (unused) subfunction of drawImage
     '''
     for _ in range(100) :
         p1 = randomPointonRect(o, r)
@@ -204,39 +319,11 @@ def drawDetailInBox(t: Turtle, img: np.ndarray, o: npt.ArrayLike, r: npt.ArrayLi
             color = img[samplePoint[1]][samplePoint[0]]
             t.color(color[2], color[1], color[0])
             t.forward(delta)
-
-def cavanDrawDetailInBox(c, img: np.ndarray, o: npt.ArrayLike, r: npt.ArrayLike, torigin: npt.ArrayLike) -> None:
-    '''
-    Use canvas to draw the detail of the image in the box.
-    '''
-    for i in range(100):
-        p1 = randomPointonRect(o, r)
-        p2 = randomPointonRect(o, r)
-        if (p1[0] - p2[0]) * (p1[1] - p2[1]) == 0:
-            continue
-        
-        directionVec = (p2 - p1)
-        directionVec = directionVec / np.linalg.norm(directionVec)
-        delta = 5 
-        # t.pensize(16*(1.2-(i/itterGen)**2.2))
-        step = directionVec * delta/2
-
-        while 1 :
-            samplePoint =  p1 + step
-            if samplePoint[0] > r[0] or samplePoint[0] < o[0] or samplePoint[1] > r[1] or samplePoint[1] < o[1]:
-                break
-            samplePoint = samplePoint - torigin
-            samplePoint = samplePoint.astype(int)
-            if samplePoint[0] > img.shape[1]-1 or samplePoint[1] > img.shape[0]-1 or samplePoint[0] <= 0 or samplePoint[1] <= 0:
-                break
-            color = img[samplePoint[1]][samplePoint[0]]
-            canvasLine(c, p1, p1+2*step, "#%02x%02x%02x" % (color[2], color[1], color[0]))
-            p1 = p1 + 2*step
-        # print (i)
             
-def getDetailImg(img: np.ndarray) -> np.ndarray:
+def _getDetailImg(img: np.ndarray) -> np.ndarray:
     '''
     Use fast fourier transform to get the detail of the image.
+    (unused) subfunction of drawImage
     '''
     ## fft
     f = np.fft.fft2(img)
@@ -259,9 +346,12 @@ def getDetailImg(img: np.ndarray) -> np.ndarray:
 
     return imgG
 
-def drawImage(t: Turtle, path: str) -> None:
+def _drawImage(t: Turtle, path: str) -> None:
     '''
     Draw an image using turtle graphics.
+    
+    (unused) too slow.
+    It take about 300~400 seconds to draw a image.
     '''
     t.setundobuffer(None)
     print ("Start")
@@ -285,7 +375,7 @@ def drawImage(t: Turtle, path: str) -> None:
 
     ## get detail image
     imgG = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    imgG = getDetailImg(imgG)
+    imgG = _getDetailImg(imgG)
     
     turtle.tracer(10000 ,0)
     starTime = time.time()
@@ -336,7 +426,7 @@ def drawImage(t: Turtle, path: str) -> None:
         imgG[int(obox[1]):int(rbox[1]), int(obox[0]):int(rbox[0])] = 0
         obox += torigin
         rbox += torigin
-        drawDetailInBox(t, img, obox, rbox, torigin)
+        _drawDetailInBox(t, img, obox, rbox, torigin)
 
     turtle.update()    
     # reste the pen size end or function
@@ -347,95 +437,11 @@ def drawImage(t: Turtle, path: str) -> None:
     print ("Tatle time used  : ",endTime - starTime)
     print("Done")
 
-def canvasDrawImage(c , path: str) -> None:
-    '''
-    Use canvas to draw an image.
-    '''
-    # load image , resize , Gaussian blur
-    img = cv2.imread(path)
-    sH = (720) / img.shape[0]
-    sW = (1280) / img.shape[1]  
-    scaler = sW if sW < sH else sH 
-    img = cv2.resize(img,None,fx=scaler, fy=scaler, interpolation = cv2.INTER_CUBIC)
-    img = cv2.filter2D(img, -1, GaussianKernel(5, 1))
-
-    # compute the position of the image
-    torigin = np.array([0,0])
-    tmax = np.array([0,0])
-    if sH < sW : # W  ss
-        torigin = np.array([300 + (1280-img.shape[1])/2, 0])
-        tmax = torigin + np.array([img.shape[1], 720])
-    else: # H ss
-        torigin = np.array([300,(720-img.shape[0])/2])
-        tmax = torigin + np.array([1580, img.shape[0]])
-
-    ## get detail image
-    imgG = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    imgG = getDetailImg(imgG)
-    
-
-    starTime = time.time()
-    
-    # draw the image
-    itterGen = 3000
-    for i in range(itterGen):
-        p1 = randomPointonRect(torigin, tmax)
-        p2 = randomPointonRect(torigin, tmax)
-        if (p1[0] - p2[0]) * (p1[1] - p2[1]) == 0:
-            continue
-        
-        directionVec = (p2 - p1)
-        directionVec = directionVec / np.linalg.norm(directionVec)
-        delta = 5 
-        step = directionVec * delta/2
-
-        while 1 :
-            samplePoint =  p1 + step
-            samplePoint = np.clip(samplePoint, torigin, tmax)
-            if np.array_equal(samplePoint, torigin) or np.array_equal(samplePoint, tmax):
-                break
-            samplePoint = samplePoint - torigin
-            samplePoint = samplePoint.astype(int)
-            if samplePoint[0] > img.shape[1]-1 or samplePoint[1] > img.shape[0]-1 or samplePoint[0] <= 0 or samplePoint[1] <= 0:
-                break
-            color = img[samplePoint[1]][samplePoint[0]]
-            canvasLine(c, p1, p1+2*step, "#%02x%02x%02x" % (color[2], color[1], color[0]), (16*(1.2-(i/itterGen)**2.2)))
-            p1 = p1 + 2*step
-
-        if i % 200 == 0:
-            c.update()  
-
-    end1 = time.time()
-    # draw the detail
-    detial_size = 20
-    for i in range(50):
-        maxidx = imgG.argmax()
-        maxidx = np.unravel_index(maxidx, imgG.shape)
-        obox = np.array([maxidx[1]-detial_size/2, maxidx[0]-detial_size/2])
-        rbox = np.array([maxidx[1]+detial_size/2, maxidx[0]+detial_size/2])
-
-        obox[0] = max(0, min(obox[0], imgG.shape[1]))
-        obox[1] = max(0, min(obox[1], imgG.shape[0]))
-        rbox[0] = max(0, min(rbox[0], imgG.shape[1]))
-        rbox[1] = max(0, min(rbox[1], imgG.shape[0]))
-
-        imgG[int(obox[1]):int(rbox[1]), int(obox[0]):int(rbox[0])] = 0
-        obox += torigin
-        rbox += torigin
-        cavanDrawDetailInBox(c, img, obox, rbox, torigin)
-
-    # reste the pen size end or function
-    endTime = time.time()
-    print ("Image time used  : ",end1 - starTime)
-    print ("Detail time used : ",endTime - end1)
-    print ("Tatle time used  : ",endTime - starTime)
-    print ("Done")
-
-    root.after(0, animation, c)
-
-def drawImPixel(t: Turtle,path :str) -> None:
+def _drawImPixel(t: Turtle,path :str) -> None:
     '''
     Draw image using turtle pixel by pixel.
+    (unused) very slow
+
     '''
     t.setundobuffer(None)
     img = cv2.imread(path)
@@ -474,44 +480,6 @@ def drawImPixel(t: Turtle,path :str) -> None:
 
     print("Time used : ", end - start)
 
-def animation(c) -> None:
-    '''
-    Animate
-    '''
-    a = 90
-    obj1 = [ [[0,a],[a*math.sqrt(3)/2,-a/2]], 
-             [[a*math.sqrt(3)/2,-a/2],[-a*math.sqrt(3)/2,-a/2]], 
-             [[-a*math.sqrt(3)/2,-a/2],[0,a]]
-        ]
-    #smaller traingale
-    obj2 = [[[0,a/2],[a*math.sqrt(3)/4,-a/4]],
-            [[a*math.sqrt(3)/4,-a/4],[-a*math.sqrt(3)/4,-a/4]],
-            [[-a*math.sqrt(3)/4,-a/4],[0,a/2]]
-        ]
-    objList = [obj1,obj2]
-    theta = 0.1
-    rotateMat1 = np.array([[cos(theta),-sin(theta)],[sin(theta),cos(theta)]])
-    rotateMat2 = np.array([[cos(-theta),-sin(-theta)],[sin(-theta),cos(-theta)]])
-    matList = [rotateMat1, rotateMat2]
-    c.create_oval(150-90, 590-90, 150+90, 590+90)
-
-    def _animate(objList=objList, matList=matList):
-        
-        for i in range(len(objList)):
-            objList[i] = [[matList[i] @ point for point in line ]for line in objList[i]]
-        c.delete("anime")
-        for obj in objList:
-            for line in obj:
-                c1 = line[0]+np.array([150,590])
-                c2 = line[1]+np.array([150,590])
-                c.create_line(c1[0], c1[1], c2[0], c2[1], fill="black", tags="anime")
-        c.update()
-        root.after(30, _animate, objList, matList)
-
-    root.after(0, _animate, objList, matList)
-
-
-    
 def main():
     
     print ("If the program is not responding, please wait for a while, the program is drawing the image.")
@@ -520,10 +488,10 @@ def main():
 
     random.seed(time.time())
     setupScreen()
-
-    t = Turtle()
     turtle.tracer(30, 1)
     turtle.colormode(255)
+
+    t = Turtle()
     t.setundobuffer(None)
     
     drawDivider(t)
@@ -534,21 +502,18 @@ def main():
     moveTurtle(t, (230, 360))
     cardioid(t, 40, 500,2)
 
-
-
     turtle.update()
 
-    # drawImage(t, "fr.jpg")
-    # drawImPixel(t, "fr.jpg")
-    # cProfile.run('drawIm()','output.pstats')
+    
+    # _drawImage(t, "fr.jpg")
+    # _drawImPixel(t, "fr.jpg")
 
 
     root.after(0, canvasDrawImage, canvas, "fr.jpg")
+    # If drawing is too slow, use the following line too play the animation and comment the line above.
     # root.after(0, animation, canvas)
+
     turtle.done()
-
-
-
 
 if __name__ == "__main__":
     canvas = turtle.getcanvas()
