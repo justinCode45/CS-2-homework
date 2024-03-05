@@ -49,6 +49,7 @@ def nilakanthaPi(n: int):
     
     return pi, end - start
 # Decimal(cmul(2,i) * cadd(cmul(2,i),1) * cadd(cmul(2,i),2))
+#((Decimal(2 * i) * (2 * i + 1) * (2 * i + 2)))
 def bbpPi(n: int):
     pi = Decimal(0) 
     start = timeit.default_timer()
@@ -79,5 +80,4 @@ def main():
     # plt.show()
 
 if __name__ == "__main__" :
-
     main()
