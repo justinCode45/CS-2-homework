@@ -1,5 +1,5 @@
 numpy
 opencv-python
 matplotlib
-
+cffi
 # virtualenv

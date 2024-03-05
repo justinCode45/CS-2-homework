@@ -1,7 +1,8 @@
 {
     "python.analysis.extraPaths": [
         "./onC/1",
-        "./HW1"
+        "./HW1",
+        "./HW2",
     ],
     "remote.autoForwardPortsFallback": 0
 }
