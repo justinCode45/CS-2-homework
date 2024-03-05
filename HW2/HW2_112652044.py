@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import timeit
 import cffi
-from _operation.lib import cadd, csub, cmul, cdiv
+# from _operation.lib import cadd, csub, cmul, cdiv
 
 def montePi(n: int):
 
@@ -44,7 +44,7 @@ def nilakanthaPi(n: int):
     
     start = timeit.default_timer()
     for i in range(1, n):
-        pi += ((-1) ** (i-1)) * Decimal(4.0) / Decimal(cmul(2,i) * cadd(cmul(2,i),1) * cadd(cmul(2,i),2))
+        pi += ((-1) ** (i-1)) * Decimal(4.0) / ((Decimal(2 * i) * (2 * i + 1) * (2 * i + 2)))
     end = timeit.default_timer()
     
     return pi, end - start
