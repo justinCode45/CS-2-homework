@@ -1,10 +1,20 @@
+# File Name : HW2_112652044.py
+# Author : Justin Chen
+# Email Address : justin.sc12@nycu.edu.tw
+# HW Number : 2
+# Description : Calculate Pi using Monte Carlo, Leibniz, Nilakantha, and Bailey–Borwein–Plouffe formula
+# Last Changed : 2024/3/7
+# Dependencies : Python 3.12.2 ,matplotlib, numpy
+# Additional :
+#   1. new formula of pi (Bailey–Borwein–Plouffe formula)
+#   2. High precision calculation using Decimal
+
 import decimal
 from decimal import Decimal
 import matplotlib.pyplot as plt
 import numpy as np
 import timeit
-import cffi
-# from _operation.lib import cadd, csub, cmul, cdiv
+
 
 def montePi(n: int):
 
@@ -18,15 +28,15 @@ def montePi(n: int):
     end = timeit.default_timer()    
     fig, ax = plt.subplots()
     pi = 4.0 * inside / n
-    # ax.set_xlim(0, 1)
-    # ax.set_ylim(0, 1)
-    # ax.set_aspect('equal')
-    # ax.add_patch(plt.Circle((0, 0), 1, fill=False, color='b'))
-    # ax.scatter(x, y, c=color_list, s=1)
-    # ax.set_title(f'Pi = {pi:.10f}')
-    # ax.set_xlabel('x')
-    # ax.set_ylabel('y')
-    # plt.show(block=False)
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.set_aspect('equal')
+    ax.add_patch(plt.Circle((0, 0), 1, fill=False, color='b'))
+    ax.scatter(x, y, c=color_list, s=1)
+    ax.set_title(f'Pi = {pi:.10f}')
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    plt.show(block=False)
     return pi, end - start
     
 def leibnizPi(n: int):
@@ -48,9 +58,11 @@ def nilakanthaPi(n: int):
     end = timeit.default_timer()
     
     return pi, end - start
-# Decimal(cmul(2,i) * cadd(cmul(2,i),1) * cadd(cmul(2,i),2))
-#((Decimal(2 * i) * (2 * i + 1) * (2 * i + 2)))
+
 def bbpPi(n: int):
+
+    n = n//10000 if n >10000 else n
+    
     pi = Decimal(0) 
     start = timeit.default_timer()
     for i in range(n):
@@ -59,25 +71,31 @@ def bbpPi(n: int):
     return pi, end - start
 
 def main():
-    print('P : 3.14159265358979323846264338327950288419716939937510')
-    n = 10000000
-    
+
     decimal.getcontext().prec = 50
-    # pM, tM =montePi(n)
-    pL, tL = leibnizPi(n)
-    pN, tN = nilakanthaPi(n)
-    pB, tB = bbpPi(int(n//1000))
-    # print(f'M : {pM:.50f}')
-    print(f'L : {pL:.50f}')
-    print(f'N : {pN:.50f}')
-    print(f'B : {pB:.50f}') 
+    n= int(input("Input number of montecarlo simulation:"))
+    print(f"You entered: {n}")
+    print(' P : 3.14159265358979323846264338327950288419716939937510')
+    pM, tM =montePi(n)
+    print(f' M : {pM:.50f}')
+    
+    plt.show()
+    func = [(leibnizPi," leibniz "),(nilakanthaPi," nilakantha "),(bbpPi," bbp ")]
+    
+    for fN in func :
+        funcName = fN[1]
+        print(f'{funcName:=^57} ')
+        for i in range(9):
+            p, t = fN[0](i+1)
+            print(f' {i+1} : {p:.50f}')
+        for i in range(7):
+            p, t = fN[0](10**(i+1))
+            print(f'E{(i+1)} : {p:.50f}')
+        print("-"*57)
 
-    # print(f'M : {tM*1000:.3f} ms')
-    print(f'L : {tL*1000:.3f} ms')
-    print(f'N : {tN*1000:.3f} ms')
-    print(f'B : {tB*1000:.3f} ms')
 
-    # plt.show()
+
+
 
 if __name__ == "__main__" :
     main()
