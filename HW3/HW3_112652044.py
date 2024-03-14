@@ -1,17 +1,29 @@
+# File Name : HW3_112652044.py
+# Author : Justin Chen
+# Email Address : justin.sc12@nycu.edu.tw
+# HW Number : 3
+# Description :
+# Last Changed : 2024/3/14
+# Dependencies : Python 3.12.2 ,matplotlib, numpy
+# Additional :
+#   1. Check user input is safe
+
+
 import string
 
+# def colorStr()
 
 def genKey(seed: str) -> str:
 
     def rmDup(s: str):
-        sP = ""
+        sP: string = ""
         for c in s:
             if c not in sP:
                 sP += c
         return sP
 
     def rmIn(s: str, key: str):
-        sP = ""
+        sP: string = ""
         for c in s:
             if c not in key:
                 sP += c
@@ -58,10 +70,20 @@ def decrypt(encryptText: str, key: str) -> str:
     return plainText
 
 
+def checkInput(input: str) -> str:
+    safeInput: str = ""
+    for i in input:
+        if i in string.ascii_letters or i == ' ':
+            safeInput += i
+    return safeInput
+
+
 def main():
 
+    print("This program encrypts and decrypts strings using a keyword")
     seed = input("Enter a password string: ")
     print(f"Entered : {seed}")
+    seed = checkInput(seed)
     key = genKey(seed)
     print(f"Key : {key}")
 
@@ -73,8 +95,8 @@ def main():
         plainText = decrypt(encrptyText, key)
         print(f"Decrypted : {plainText}")
 
-    aga = input("Continue? Y/N: ")
-    if aga.lower() == "y":
+    again = input("Continue? Y/N: ")
+    if again.lower() == "y":
         main()
     else:
         print("Goodbye")
