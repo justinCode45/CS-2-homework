@@ -119,7 +119,7 @@ Description:
 
         key: str = arg.pop(0)
         if not key.isnumeric():
-            print("Invalid arguments")
+            print("Invalid arguments <keyIndex>")
             return
         key = int(key) - 1
         if key < 0 or key >= len(self.keyList):
@@ -135,12 +135,14 @@ Description:
                 file = open(outputFileName, "w")
                 file.write(encryptText)
                 file.close()
+                print("\nSuccess!\n")
             except:
                 print("File not found")
                 return
         else:
             print(encryptText)
             self.encryptedList.append(encryptText)
+            print(f"Encrypted text added to list at index {len(self.encryptedList)}")
 
     def do_decrypt(self, arg):
         '''
@@ -248,11 +250,13 @@ Description:
         
         '''
         print()
-        print(f"{"Encrypted List":-^32}")
+        print(f"{"Encrypted Text List":-^32}")
         for i in range(len(self.encryptedList)):
             print(f"{i+1:2} : {self.encryptedList[i]}")
         print()
 
+    def emptyline(self):
+        pass
 
 def genKey(seed: str) -> str:
 
