@@ -7,7 +7,8 @@
 # Dependencies : Python 3.12.2 ,matplotlib, numpy
 # Additional :
 #   1. Check user input is safe
-
+#   2. Can save and load key to file
+#   3. Can encrypt and decrypt file
 
 import string
 import cmd
@@ -30,8 +31,8 @@ def color(s: str, c: FgColor) -> str:
     return f"\033[{c.value}m{s}\033[0m"
 
 
-ERRORPREFIX = "[" + color("Error", FgColor.RED) + "]"
-SUCCESSPREFIX = "[" + color("Success", FgColor.GREEN) + "]"
+ERRORPREFIX: str = "[" + color("Error", FgColor.RED) + "]"
+SUCCESSPREFIX: str = "[" + color("Success", FgColor.GREEN) + "]"
 
 
 class app(cmd.Cmd):
@@ -314,6 +315,38 @@ Description:
 
     def emptyline(self):
         pass
+    
+    def do_MCMC(self, arg):
+        '''
+Usage: MCMC <fileName> <iteration> <outputFileName>
+
+Arguments:
+    <fileName> : the name of the file to read the encrypted text from
+    <iteration> : the number of iteration to run
+    <outputFileName> : the name of the file to write the plain text to
+
+Description:
+    Decrypt a string using a Markov Chain Monte Carlo.
+
+        '''
+        arg = shlex.split(arg)
+        if len(arg) != 3:
+            print(ERRORPREFIX, "Invalid arguments")
+            return
+        infile = arg.pop(0)
+        iteration = arg.pop(0)
+        outfile = arg.pop(0)
+        if not iteration.isnumeric():
+            print(ERRORPREFIX, "Invalid arguments")
+            return
+        iteration = int(iteration)
+        MCMC(infile, iteration, outfile)
+
+
+def MCMC(infile: str, iteration: int, outfile: str) -> None:
+    
+    pass
+
 
 
 def genKey(seed: str) -> str:
@@ -408,4 +441,5 @@ def main():
 
 
 if __name__ == "__main__":
+    # main()
     app().cmdloop()
