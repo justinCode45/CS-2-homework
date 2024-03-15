@@ -12,6 +12,26 @@
 import string
 import cmd
 import shlex
+from enum import Enum
+
+
+class FgColor(Enum):
+    BLACK = "30"
+    RED = "31"
+    GREEN = "32"
+    YELLOW = "33"
+    BLUE = "34"
+    MAGENTA = "35"
+    CYAN = "36"
+    WHITE = "37"
+
+
+def color(s: str, c: FgColor) -> str:
+    return f"\033[{c.value}m{s}\033[0m"
+
+
+ERRORPREFIX = "[" + color("Error", FgColor.RED) + "]"
+SUCCESSPREFIX = "[" + color("Success", FgColor.GREEN) + "]"
 
 
 class app(cmd.Cmd):
@@ -19,6 +39,8 @@ class app(cmd.Cmd):
     prompt = "\033[93m>> \033[0m"
     intro = '''
 This program encrypts and decrypts strings using a keyword.
+If want to exit, type "exit".
+If want to switch to legacy mode, type "legacy".
 Type "help" or "?" to list commands.
             '''
     keyList: list[str] = []
@@ -26,6 +48,39 @@ Type "help" or "?" to list commands.
 
     def __init__(self) -> None:
         super().__init__()
+
+    def do_savekey(self, arg):
+        '''
+Usage: savekey <keyIndex> <fileName>
+
+Arguments:
+    <keyIndex> : the index of the key to save
+    <fileName> : the name of the file to save the key to
+
+Description:
+    Save a key to a file.
+        '''
+        arg = shlex.split(arg)
+        if len(arg) != 2:
+            print(ERRORPREFIX, "Invalid arguments")
+            return
+        keyIndex = arg.pop(0)
+        if not keyIndex.isnumeric():
+            print(ERRORPREFIX, "Invalid arguments")
+            return
+        keyIndex = int(keyIndex) - 1
+        if keyIndex < 0 or keyIndex >= len(self.keyList):
+            print(ERRORPREFIX, "Invalid key index")
+            return
+        key = self.keyList[keyIndex]
+        fileName = arg.pop(0)
+        try:
+            file = open(fileName, "w")
+            file.write(key)
+            file.close()
+            print(f"\n{SUCCESSPREFIX}\n")
+        except:
+            print(ERRORPREFIX, "File not found")
 
     def do_exit(self, arg):
         '''
@@ -52,7 +107,7 @@ Description:
         '''
         s = genKey(arg)
         self.keyList.append(s)
-        print(f"You Entered : {arg}")
+        print()
         print(f"  Key : {s}")
         print(f"Index : {len(self.keyList)}")
         print()
@@ -77,9 +132,9 @@ Description:
             print(f"Index : {len(self.keyList)}")
             print()
         except:
-            print("File not found")
+            print(ERRORPREFIX, "File not found")
 
-    def do_encrypt(self, arg):
+    def do_encrypt(self, arg): 
         '''
 Usage:  encrypt file <fileName> <keyIndex> [<outputFileName>]
         encrypt str <string> <keyIndex> [<outputFileName>]
@@ -97,7 +152,7 @@ Description:
         arg = shlex.split(arg)
         # print(arg)
         if len(arg) < 3:
-            print("Invalid arguments")
+            print(ERRORPREFIX, "Invalid arguments")
             return
 
         plainText: str = ""
@@ -109,21 +164,21 @@ Description:
                     plainText = file.read()
                     file.close()
                 except:
-                    print("File not found")
+                    print(ERRORPREFIX, "File not found")
                     return
             case "str":
                 plainText = arg.pop(0)
             case _:
-                print("Invalid arguments")
+                print(ERRORPREFIX, "Invalid arguments")
                 return
 
         key: str = arg.pop(0)
         if not key.isnumeric():
-            print("Invalid arguments <keyIndex>")
+            print(ERRORPREFIX, "Invalid arguments <keyIndex>")
             return
         key = int(key) - 1
         if key < 0 or key >= len(self.keyList):
-            print("Invalid key index")
+            print(ERRORPREFIX, "Invalid key index")
             return
         key = self.keyList[key]
 
@@ -135,14 +190,15 @@ Description:
                 file = open(outputFileName, "w")
                 file.write(encryptText)
                 file.close()
-                print("\nSuccess!\n")
+                print(f"\n{SUCCESSPREFIX}\n")
             except:
-                print("File not found")
+                print(ERRORPREFIX, "File not found")
                 return
         else:
             print(encryptText)
             self.encryptedList.append(encryptText)
-            print(f"Encrypted text added to list at index {len(self.encryptedList)}")
+            l = len(self.encryptedList)
+            print(f"Encrypted text added to list at index {l}")
 
     def do_decrypt(self, arg):
         '''
@@ -176,32 +232,32 @@ Description:
                     encryptText = file.read()
                     file.close()
                 except:
-                    print("File not found")
+                    print(ERRORPREFIX, "File not found")
                     return
             case "str":
                 encryptText = arg.pop(0)
             case "list":
                 index = arg.pop(0)
                 if not index.isnumeric():
-                    print("Invalid arguments")
+                    print(ERRORPREFIX, "Invalid arguments")
                     return
                 index = int(index) - 1
                 if index < 0 or index >= len(self.encryptedList):
-                    print("Invalid list index")
+                    print(ERRORPREFIX, "Invalid list index")
                     return
                 encryptText = self.encryptedList[index]
                 self.encryptedList.pop(index)
             case _:
-                print("Invalid arguments")
+                print(ERRORPREFIX, "Invalid arguments")
                 return
 
         key: str = arg.pop(0)
         if not key.isnumeric():
-            print("Invalid arguments")
+            print(ERRORPREFIX, "Invalid arguments")
             return
         key = int(key) - 1
         if key < 0 or key >= len(self.keyList):
-            print("Invalid key index")
+            print(ERRORPREFIX, "Invalid key index")
             return
         key = self.keyList[key]
 
@@ -213,8 +269,9 @@ Description:
                 file = open(outputFileName, "w")
                 file.write(plainText)
                 file.close()
+                print(f"\n{SUCCESSPREFIX}\n")
             except:
-                print("File not found")
+                print(ERRORPREFIX, "File not found")
                 return
         else:
             print(plainText)
@@ -232,12 +289,12 @@ Description:
             print(f"{i+1:2} : {self.keyList[i]}")
         print()
 
-    def do_defualtMode(self, arg):
+    def do_legacy(self, arg):
         '''
-Usage: defualtMode
+Usage: legacy
 
 Description:
-    Switch to defualt mode.
+    Switch to legacy mode.
         '''
         main()
 
@@ -247,7 +304,7 @@ Usage: etextlist
 
 Description:
     List all encrypted text.
-        
+
         '''
         print()
         print(f"{"Encrypted Text List":-^32}")
@@ -257,6 +314,7 @@ Description:
 
     def emptyline(self):
         pass
+
 
 def genKey(seed: str) -> str:
 
