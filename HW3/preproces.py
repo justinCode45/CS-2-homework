@@ -1,36 +1,22 @@
+import string
 
-with open("ref.txt", "r") as file:
+def checkInput(input: str) -> str:
+    safeInput: str = ""
+    for i in input:
+        if i in string.ascii_letters or i == ' ':
+            safeInput += i
+    return safeInput
+
+with open("refOrigin.txt", "r") as file:
     ref = file.readlines()
 
+
 for i in range(len(ref)):
-    # Remove the newline character
-    # all char will be lowercase or space   
-    # change all non-alphabetic characters to space
     ref[i] = ref[i].lower()
-    ref[i] = ref[i].replace("\n", "")
-    ref[i] = ref[i].replace(" ", "")
-    ref[i] = ref[i].replace("!", " ")
-    ref[i] = ref[i].replace("@", " ")
-    ref[i] = ref[i].replace("#", " ")
-    ref[i] = ref[i].replace("$", " ")
-    ref[i] = ref[i].replace("%", " ")
-    ref[i] = ref[i].replace("^", " ")
-    ref[i] = ref[i].replace("&", " ")
-    ref[i] = ref[i].replace("*", " ")
-    ref[i] = ref[i].replace("(", " ")
-    ref[i] = ref[i].replace(")", " ")
-    ref[i] = ref[i].replace("-", " ")
-    ref[i] = ref[i].replace("_", " ")
-    ref[i] = ref[i].replace("=", " ")
-    ref[i] = ref[i].replace("+", " ")
-    ref[i] = ref[i].replace("[", " ")
-    ref[i] = ref[i].replace("]", " ")
-    ref[i] = ref[i].replace("{", " ")
-    ref[i] = ref[i].replace("}", " ")
-    ref[i] = ref[i].replace(";", " ")
-    ref[i] = ref[i].replace(":", " ")
-    ref[i] = ref[i].replace("'", " ")
-    ref[i] = ref[i].replace('"', " ")
-    ref[i] = ref[i].replace("<", " ")
-    ref[i] = ref[i].replace(">", " ")
-    
+    ref[i] = checkInput(ref[i])
+
+
+with open("ref.txt", "w") as file:
+    for i in ref:
+        if i != "":
+            file.writelines(i + "\n")
