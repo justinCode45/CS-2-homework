@@ -2,8 +2,8 @@
 # Author : Justin Chen
 # Email Address : justin.sc12@nycu.edu.tw
 # HW Number : 3
-# Description :
-# Last Changed : 2024/3/14
+# Description : This program encrypts and decrypts strings using a keyword.
+# Last Changed : 2024/3/17
 # Dependencies : Python 3.12.2 ,matplotlib, numpy
 # Additional :
 #   1. Check user input is safe
@@ -14,7 +14,6 @@
 import string
 import cmd
 import shlex
-import secrets
 import random
 import time
 import math
@@ -334,9 +333,10 @@ Arguments:
 
 Description:
     Decrypt a string using a Markov Chain Monte Carlo.
-    the reference file and  encrypted text file should be SAFE.
+    The reference file and encrypted text file should be safe,
     ONLY HAVE LOWERCASE LETTERS AND SPACE AND '\\n'.
-    the length of chiper text must be at least 10000. 
+    The length of encrypted text must be at least 10000. 
+    plaease use the "ref.txt" as the reference file.
         '''
         arg = shlex.split(arg)
         if len(arg) != 3:
@@ -349,7 +349,11 @@ Description:
             print(ERRORPREFIX, "Invalid arguments")
             return
         iteration = int(iteration)
-        self.mcmc.run(infile, iteration, outfile)
+        key = self.mcmc.run(infile, iteration, outfile)
+        self.keyList.append(key)
+        print(f"Key : {key} added to key list")
+        print(f"Index : {len(self.keyList)}")
+        print(f"\n{SUCCESSPREFIX}\n")
 
 
 class MCMC:
@@ -360,18 +364,20 @@ class MCMC:
     FKofbi = []
 
     def __init__(self) -> None:
-        self.p = 1
+
         for i in string.ascii_lowercase + " ":
             for j in string.ascii_lowercase + " ":
                 self.FKofbi.append(i+j)
 
     def buildDict(self, refpath: str) -> None:
+        # build the reference dictionary
         with open(refpath, "r") as file:
             ref = file.read()
         self.uniDict = self.freqDict(ref, self.FKofuni)
         self.biDict = self.freqDict(ref, self.FKofbi)
 
     def freqDict(self, text: str, freqTargetList: list[str]) -> dict:
+        # count the frequency of each char in text
         text.lower()
         freq = {}
         for key in freqTargetList:
@@ -409,18 +415,13 @@ class MCMC:
         else:
             scorep = min(1, math.exp(scorep))
         u = random.random()
-        # u = math.log(u)
         if u < scorep:
             key = newkey
-
-        print(f"key : {key} -> {newkey}")
         return key
 
-    def run(self, infile: str, iteration: int, outfile: str) -> None:
+    def run(self, infile: str, iteration: int, outfile: str) -> str:
         # use ref.txt to build the dictionary
         self.buildDict("ref.txt")
-
-        print(self.biDict)
 
         try:
             with open(infile, "r") as file:
@@ -432,22 +433,22 @@ class MCMC:
 
         # random start key
         startkey = string.ascii_lowercase + " "
-        print("startkey :", startkey)
         shufflekey = list(startkey)
         random.shuffle(shufflekey)
         startkey = ''.join(shufflekey)
+        print("startkey :", startkey)
 
         keyNow = startkey
-        # uni-gram attack
-        for _ in range(10):
-            keyNow = self.attack(
-                otext, keyNow, self.FKofuni, self.uniDict)
+        print(f"key : {keyNow}")
 
-        for _ in range(10):
-
+        for _ in range(5):
+            # uni-gram attack
+            for _ in range(10):
+                keyNow = self.attack(
+                    otext, keyNow, self.FKofuni, self.uniDict)
             # random 2000 char
             rtemp = random.randint(0, len(otext) - 200000)
-            randomtext = otext[rtemp:rtemp+5000]
+            randomtext = otext[rtemp:rtemp+2000]
             # bi-gram attack
             keyList = []
             for i in range(iteration):
@@ -464,12 +465,11 @@ class MCMC:
 
             maxScoreKey = max(keyscore, key=lambda x: x[1])
             keyNow = maxScoreKey[0]
+            print(f"key : {keyNow} || score : {maxScoreKey[1]}")
 
         with open(outfile, "w") as file:
             file.write(decrypt(otext, keyNow))
-        print(f"\n{SUCCESSPREFIX}\n")
-        print(f"Key : {keyNow}")
-        print("\n")
+        return keyNow
 
 
 def genKey(seed: str) -> str:
@@ -505,7 +505,7 @@ def genKey(seed: str) -> str:
 
 
 def encrypt(plainText: str, key: str) -> str:
-
+    # encrypt
     def toindex(t):
         if ord(t) >= ord('a') and ord(t) <= ord('z'):
             return ord(t) - ord('a')
@@ -523,7 +523,7 @@ def encrypt(plainText: str, key: str) -> str:
 
 
 def decrypt(encryptText: str, key: str) -> str:
-
+    # decrypt
     def tochar(t):
         return chr(t + ord('a')) if t != 26 else ' '
 
@@ -538,15 +538,17 @@ def decrypt(encryptText: str, key: str) -> str:
 
 
 def checkInput(input: str) -> str:
+    # check input is safe
+    # only allow ascii letters and space and newline
     safeInput: str = ""
     for i in input:
-        if i in string.ascii_letters or i == ' ':
+        if i in string.ascii_letters or i == ' ' or i == '\n':
             safeInput += i
     return safeInput
 
 
 def main():
-
+    # legacy mode
     print("This program encrypts and decrypts strings using a keyword")
     seed = input("Enter a password string: ")
     print(f"Entered : {seed}")
@@ -572,5 +574,4 @@ def main():
 if __name__ == "__main__":
     # main()
     random.seed(time.time())
-    secrets.SystemRandom().seed(time.time())
     app().cmdloop()

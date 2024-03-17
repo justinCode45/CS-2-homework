@@ -21,11 +21,14 @@
 #         if i != "":
 #             file.writelines(i + '\n')
 
-with open("ref.txt", "r") as file:
-    ref = file.read()
+import string
+import random
 
-print(len(ref))
+startkey = string.ascii_lowercase + " "
+print("startkey :", startkey)
+shufflekey = list(startkey)
+random.shuffle(shufflekey)
+startkey = ''.join(shufflekey)
 
-#get substring of ref with length 2000
-r = ref[10:2000]
-print(len(r))
+
+print("startkey :", startkey)
