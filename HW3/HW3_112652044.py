@@ -9,6 +9,7 @@
 #   1. Check user input is safe
 #   2. Can save and load key to file
 #   3. Can encrypt and decrypt file
+#   4. Can use MCMC to decrypt text
 
 import string
 import cmd
@@ -46,6 +47,7 @@ class app(cmd.Cmd):
 This program encrypts and decrypts strings using a keyword.
 If want to exit, type "exit".
 If want to switch to legacy mode, type "legacy".
+MCMC is a Markov Chain Monte Carlo algorithm to decrypt text.
 Type "help" or "?" to list commands.
             '''
     keyList: list[str] = []
@@ -333,7 +335,8 @@ Arguments:
 Description:
     Decrypt a string using a Markov Chain Monte Carlo.
     the reference file and  encrypted text file should be SAFE.
-    ONLY HAVE LOWERCASE LETTERS AND SPACE.
+    ONLY HAVE LOWERCASE LETTERS AND SPACE AND '\\n'.
+    the length of chiper text must be at least 10000. 
         '''
         arg = shlex.split(arg)
         if len(arg) != 3:
@@ -351,97 +354,122 @@ Description:
 
 class MCMC:
 
-    uniDict: dict[str, str] = {}
-    biDict: dict[str, str] = {}
+    uniDict: dict[str, int] = {}
+    biDict: dict[str, int] = {}
+    FKofuni = string.ascii_lowercase + " "
+    FKofbi = []
 
     def __init__(self) -> None:
         self.p = 1
+        for i in string.ascii_lowercase + " ":
+            for j in string.ascii_lowercase + " ":
+                self.FKofbi.append(i+j)
 
-    def buildDict(self, refpath: str, freqTargetList: list[str]) -> None:
+    def buildDict(self, refpath: str) -> None:
         with open(refpath, "r") as file:
             ref = file.read()
-        self.uniDict = self.freqDict(ref, string.ascii_lowercase + ' ')
-        self.biDict = self.freqDict(ref, freqTargetList)
+        self.uniDict = self.freqDict(ref, self.FKofuni)
+        self.biDict = self.freqDict(ref, self.FKofbi)
 
-    def freqDict(self, refpath: str, freqTargetList: list[str]) -> dict:
-
-        with open(refpath, "r") as file:
-            ref = file.read()
-        ref.lower()
+    def freqDict(self, text: str, freqTargetList: list[str]) -> dict:
+        text.lower()
         freq = {}
         for key in freqTargetList:
-            freq[key] = ref.count(key)
+            freq[key] = text.count(key)
         return freq
 
     def nextKey(self, key: str) -> str:
-        i, j = random.sample(range(0, 26), 2)
+        # swap two random char in key
+        i = random.randint(0, 26)
+        j = random.randint(0, 26)
         key = list(key)
         key[i], key[j] = key[j], key[i]
         return ''.join(key)
 
-    def score(self, textDict: dict[str, str], refDict: dict[str, str]) -> int:
-        lscore: int = 0
+    def logScore(self, textDict: dict[str, int], refDict: dict[str, int]) -> float:
+        lscore: float = 0
         for k in textDict:
-            lscore += textDict[k]*math.log2(refDict[k])
+            lscore += (textDict[k])*math.log(refDict[k]+1)
         return lscore
 
-    def attack(self, otext: str, key: str, frqList) -> str:
+    def attack(self, otext: str, key: str, frqList, dictToCompare: dict[str, int]) -> str:
         newkey = self.nextKey(key)
         newtext = decrypt(otext, newkey)
         currenttext = decrypt(otext, key)
+
         currentDict = self.freqDict(currenttext, frqList)
         newDict = self.freqDict(newtext, frqList)
 
-        newScore = self.score(newDict, self.uniDict)
-        currentScore = self.score(currentDict, self.uniDict)
+        newScore = self.logScore(newDict, dictToCompare)
+        currentScore = self.logScore(currentDict, dictToCompare)
 
-        scorep: float = newScore/currentScore
-        scorep = math.pow(scorep, self.p)
-        u = secrets.randbelow(1)
-
+        scorep: float = newScore-currentScore
+        if scorep > 0:
+            scorep = 1
+        else:
+            scorep = min(1, math.exp(scorep))
+        u = random.random()
+        # u = math.log(u)
         if u < scorep:
             key = newkey
 
+        print(f"key : {key} -> {newkey}")
         return key
 
     def run(self, infile: str, iteration: int, outfile: str) -> None:
-        bifreqKeyList = []
-        self.buildDict("ref.txt", bifreqKeyList)
+        # use ref.txt to build the dictionary
+        self.buildDict("ref.txt")
 
-        with open(infile, "r") as file:
-            otext = file.read()
+        print(self.biDict)
+
+        try:
+            with open(infile, "r") as file:
+                otext = file.read()
+        except:
+            print(ERRORPREFIX, "File not found")
+            return
         otext = otext.lower()
 
-        startkey = "dkflstuvwxyz abceghijmnopqr"
-        for _ in range(10):
-            startkey = self.attack(otext, startkey, string.ascii_lowercase+' ')
-        rtemp = random.randint(0, len(otext) - 10000)
-        otext = otext[rtemp:2000]
+        # random start key
+        startkey = string.ascii_lowercase + " "
+        print("startkey :", startkey)
+        shufflekey = list(startkey)
+        random.shuffle(shufflekey)
+        startkey = ''.join(shufflekey)
 
-        keyList = []
         keyNow = startkey
-        for i in range(iteration):
-            keyNow = self.attack(otext, keyNow, bifreqKeyList)
-            if keyNow not in keyList:
-                keyList.append(keyNow)
+        # uni-gram attack
+        for _ in range(10):
+            keyNow = self.attack(
+                otext, keyNow, self.FKofuni, self.uniDict)
 
-        with open(infile, "r") as file:
-            otext = file.read()
-        otext = otext.lower()
+        for _ in range(10):
 
-        keyscore = []
-        for key in keyList:
-            text = decrypt(otext, key)
-            textDict = self.freqDict(text, bifreqKeyList)
-            keyscore.append((key, self.score(textDict, self.biDict)))
+            # random 2000 char
+            rtemp = random.randint(0, len(otext) - 200000)
+            randomtext = otext[rtemp:rtemp+5000]
+            # bi-gram attack
+            keyList = []
+            for i in range(iteration):
+                keyNow = self.attack(randomtext, keyNow,
+                                     self.FKofbi, self.biDict)
+                if keyNow not in keyList:
+                    keyList.append(keyNow)
+            # choose the best key
+            keyscore = []
+            for i in keyList:
+                text = decrypt(otext, i)
+                textDict = self.freqDict(text, self.FKofbi)
+                keyscore.append((i, self.logScore(textDict, self.biDict)))
 
-        maxScoreKey = max(keyscore, key=lambda x: x[1])
-        key = maxScoreKey[0]
+            maxScoreKey = max(keyscore, key=lambda x: x[1])
+            keyNow = maxScoreKey[0]
 
         with open(outfile, "w") as file:
-            file.write(decrypt(otext, key))
+            file.write(decrypt(otext, keyNow))
         print(f"\n{SUCCESSPREFIX}\n")
-        print(f"Key : {key}")
+        print(f"Key : {keyNow}")
+        print("\n")
 
 
 def genKey(seed: str) -> str:
@@ -486,8 +514,11 @@ def encrypt(plainText: str, key: str) -> str:
 
     encryptText = ""
     for c in plainText:
-        c = c.lower()
-        encryptText += key[toindex(c)]
+        if c == '\n':
+            encryptText += c
+        else:
+            c = c.lower()
+            encryptText += key[toindex(c)]
     return encryptText
 
 
@@ -498,8 +529,11 @@ def decrypt(encryptText: str, key: str) -> str:
 
     plainText = ""
     for c in encryptText:
-        c = c.lower()
-        plainText += tochar(key.index(c))
+        if c == '\n':
+            plainText += c
+        else:
+            c = c.lower()
+            plainText += tochar(key.index(c))
     return plainText
 
 
@@ -538,4 +572,5 @@ def main():
 if __name__ == "__main__":
     # main()
     random.seed(time.time())
+    secrets.SystemRandom().seed(time.time())
     app().cmdloop()
