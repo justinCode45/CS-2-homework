@@ -1,3 +1,1 @@
-s = "fsdfds"
-
-print(s.isalpha())
+pass

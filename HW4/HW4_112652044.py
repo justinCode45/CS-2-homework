@@ -9,7 +9,7 @@
 
 
 import turtle
-import math
+# import math
 
 
 def getInputs() -> list[int]:
