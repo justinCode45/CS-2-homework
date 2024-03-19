@@ -6,6 +6,7 @@ def ferquencyTable(aList):
         aDict[i] = aDict.get(i,0) +1
 
     itemList = list(aDict.keys())
+    itemList.sort()
     print("TIME","FREQUENCY")
     for item in itemList:
         print(f"{item:4}{aDict[item]:5}")

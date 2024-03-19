@@ -4,7 +4,7 @@
 # HW Number : 3
 # Description : This program encrypts and decrypts strings using a keyword.
 # Last Changed : 2024/3/17
-# Dependencies : Python 3.12.2 ,matplotlib, numpy
+# Dependencies : Python 3.12.2
 # Additional :
 #   1. Check user input is safe
 #   2. Can save and load key to file
@@ -395,7 +395,7 @@ class MCMC:
     def logScore(self, textDict: dict[str, int], refDict: dict[str, int]) -> float:
         lscore: float = 0
         for k in textDict:
-            lscore += (textDict[k])*math.log(refDict[k]+1)
+            lscore += (textDict[k]+1)*math.log(refDict[k]+1)
         return lscore
 
     def attack(self, otext: str, key: str, frqList, dictToCompare: dict[str, int]) -> str:
