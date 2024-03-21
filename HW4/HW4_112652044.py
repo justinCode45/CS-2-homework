@@ -9,11 +9,18 @@
 
 
 import turtle
+from turtle import Vec2D
 # import math
 
 
+def moveTurtle(t: turtle.RawTurtle, x: float, y: float):
+    t.penup()
+    t.goto(x, y)
+    t.pendown()
+
 def getInputs() -> list[int]:
-    instring = input("Please enter the squence of intergr in [1,99] : ")
+    instring = input(
+        "Please enter the squence of intergr in [1,99] (at most 20 numbers) : ")
     inlist = instring.split()
     inlist = [int(x) for x in inlist]
     return inlist
@@ -29,78 +36,86 @@ def freqTable(alist: list[int]) -> dict[int, int]:
     return sorted_freq
 
 
-def drawAxis(wn: turtle.Screen, freq: dict[int, int]):
+def drawAxis(wn: turtle.Screen, origin: Vec2D, freq: dict[int, int]):
     # Draw the axis
-    
-    chartxSize = len(freq) 
-    chartySize = max(freq.values())
+
     t = turtle.RawTurtle(wn)
     t.speed(0)
     t.hideturtle()
 
     t.pensize(3)
 
-    t.teleport(0, 0)
+    moveTurtle(t, origin[0], origin[1])
     t.setheading(90)
-    t.forward(chartySize*1.05)
+    t.forward(600)
     t.write("Frequency")
-    
-    t.teleport(0, 0)
-    t.setheading(0)
-    t.forward(chartxSize*1.05)
-    t.write("Value")
-    
 
-def drawBars(wn: turtle.Screen, freq: dict[int, int]):
+    moveTurtle(t, origin[0], origin[1])
+    t.setheading(0)
+    t.forward(792)
+    t.write("Value")
+
+
+def drawBars(wn: turtle.Screen, origin: Vec2D, freq: dict[int, int]):
     # Draw the bars
     t = turtle.RawTurtle(wn)
+    
     t.speed(0)
-    t.teleport(0.5, 0)
+    moveTurtle(t, origin[0], origin[1])
+    t.setheading(0)
     t.hideturtle()
-    t.color("blue")
-    t.fillcolor("blue")
+
+    scaler = 550 / (max(freq.values()) )
+    oneUnit = 720 / len(freq)
+    t.forward(oneUnit/2)
+    maxVal = max(freq.values())
 
     for key, value in freq.items():
+        t.color((int)(255*value/maxVal), 128, 128)
+        t.fillcolor((int)(255*value/maxVal), 128, 128)
         t.begin_fill()
         t.left(90)
-        t.forward(value)
-        t.write(f"{value}", font=("Arial", 12, "normal"))
+        t.forward(value *scaler)
+        t.write(f"{value}", font=("Arial", 10, "normal"))
         t.right(90)
-        t.forward(0.5)
+        t.forward(oneUnit* 2/3)
         t.right(90)
-        t.forward(value)
+        t.forward(value *scaler)
         t.left(90)
         t.end_fill()
 
         pos = t.pos()
-        t.teleport(pos[0]-0.25, pos[1] - 0.5)
-        t.write(f"{key}", font=("Arial", 12, "normal"))
+        t.teleport(pos[0]-(oneUnit/2), pos[1] - 25)
+        t.write(f"{key}", font=("Arial", 10, "normal"))
         t.teleport(pos[0], pos[1])
 
         t.penup()
-        t.forward(0.5)
+        t.forward(oneUnit* 1/3)
         t.pendown()
 
 
-def drawfreqTable(freq: dict[int, int]):
+def onclickf(x, y):
+    
+    pass
+
+def app(freq: dict[int, int]):
+
+    turtle.colormode(255)
 
     # Set up the window
     wn = turtle.Screen()
-    chartxSize = len(freq) 
-    chartySize = max(freq.values())
-    wn.setworldcoordinates(-chartxSize*0.05, -chartySize*0.05,
-                           chartxSize*1.1, chartySize*1.1)
+    wn.setup(1280,720)
+    wn.setworldcoordinates(0,0,1280,720)
+
+    origin = Vec2D(20, 20)
     # Draw the axis
-    drawAxis(wn, freq)
-
+    drawAxis(wn, origin, freq)
     # Draw the bars
-    drawBars(wn, freq)
+    drawBars(wn, origin, freq)
+    turtle.onclick(onclickf)
 
-    wn.update()
-
-    wn.exitonclick()
+    turtle.mainloop()
     turtle.TurtleScreen._RUNNING = True
-    
 
 
 def main():
@@ -120,17 +135,18 @@ def main():
     alistFreq = freqTable(alist)
     print(alistFreq)
 
-    if len(alistFreq) > 10:
-        alistFreq = sorted(alistFreq.items(), key=lambda x: x[1])
-        alistFreq = dict(alistFreq[:5] +alistFreq[-5:])
-    drawfreqTable(alistFreq)
-
+    # if len(alistFreq) > 10:
+    #     alistFreq = sorted(alistFreq.items(), key=lambda x: x[1])
+    #     alistFreq = dict(alistFreq[:5] + alistFreq[-5:])
+    alistFreq =  dict(sorted(alistFreq.items(), key=lambda x: x[1]))
+    app(alistFreq)
 
     aga = input("Do you want to continue? (yes/no) : ")
     if aga == "yes":
         main()
     else:
         print("Goodbye!")
+
 
 if __name__ == "__main__":
     main()
