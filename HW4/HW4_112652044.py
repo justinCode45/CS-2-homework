@@ -6,17 +6,57 @@
 # Last Changed : 2024/3/17
 # Dependencies : Python 3.12.2
 # Additional :
-
+#   1. Colorful bars
+#   2. Sort by value or frequency
+#   3. Draw all or draw the smallest 5 and largest 5
 
 import turtle
 from turtle import Vec2D
-# import math
+import random
+
+
+class Button:
+
+    def __init__(self, wn: turtle.Screen, pos: Vec2D, width: int, height: int, text: str):
+        self.pos = pos
+        self.width = width
+        self.height = height
+        self.text = text
+        self.wn = wn
+
+    def clicked(self, x: int, y: int) -> bool:
+        if self.pos[0] - self.width/2 < x < self.pos[0] + self.width/2 and self.pos[1] - self.height/2 < y < self.pos[1] + self.height/2:
+            return True
+        return False
+
+    def draw(self):
+        t = turtle.RawTurtle(self.wn)
+        t.hideturtle()
+        t.speed(0)
+        t.penup()
+        t.goto(self.pos)
+        t.forward(self.width/2)
+        t.pendown()
+        t.right(90)
+        t.forward(self.height/2)
+        t.right(90)
+        t.forward(self.width)
+        t.right(90)
+        t.forward(self.height)
+        t.right(90)
+        t.forward(self.width)
+        t.right(90)
+        t.forward(self.height)
+        t.right(90)
+        t.forward(self.width/2)
+        t.write(self.text, align="center", font=("Arial", 10, "normal"))
 
 
 def moveTurtle(t: turtle.RawTurtle, x: float, y: float):
     t.penup()
     t.goto(x, y)
     t.pendown()
+
 
 def getInputs() -> list[int]:
     instring = input(
@@ -40,6 +80,7 @@ def drawAxis(wn: turtle.Screen, origin: Vec2D, freq: dict[int, int]):
     # Draw the axis
 
     t = turtle.RawTurtle(wn)
+    wn.colormode(255)
     t.speed(0)
     t.hideturtle()
 
@@ -59,14 +100,16 @@ def drawAxis(wn: turtle.Screen, origin: Vec2D, freq: dict[int, int]):
 def drawBars(wn: turtle.Screen, origin: Vec2D, freq: dict[int, int]):
     # Draw the bars
     t = turtle.RawTurtle(wn)
-    
+    lengthFeq = len(freq)
+    wn.colormode(255)
+    wn.tracer(lengthFeq//3, 0)
     t.speed(0)
     moveTurtle(t, origin[0], origin[1])
     t.setheading(0)
     t.hideturtle()
 
-    scaler = 550 / (max(freq.values()) )
-    oneUnit = 720 / len(freq)
+    scaler = 550 / (max(freq.values()))
+    oneUnit = 720 / lengthFeq
     t.forward(oneUnit/2)
     maxVal = max(freq.values())
 
@@ -75,12 +118,12 @@ def drawBars(wn: turtle.Screen, origin: Vec2D, freq: dict[int, int]):
         t.fillcolor((int)(255*value/maxVal), 128, 128)
         t.begin_fill()
         t.left(90)
-        t.forward(value *scaler)
+        t.forward(value * scaler)
         t.write(f"{value}", font=("Arial", 10, "normal"))
         t.right(90)
-        t.forward(oneUnit* 2/3)
+        t.forward(oneUnit * (0.5+0.5*lengthFeq/(lengthFeq+3)))
         t.right(90)
-        t.forward(value *scaler)
+        t.forward(value * scaler)
         t.left(90)
         t.end_fill()
 
@@ -90,29 +133,74 @@ def drawBars(wn: turtle.Screen, origin: Vec2D, freq: dict[int, int]):
         t.teleport(pos[0], pos[1])
 
         t.penup()
-        t.forward(oneUnit* 1/3)
+        t.forward(oneUnit * (0.5-0.5*lengthFeq/(lengthFeq+3)))
         t.pendown()
-
-
-def onclickf(x, y):
     
-    pass
+    wn.update()
+    wn.tracer(1, 1)
+
 
 def app(freq: dict[int, int]):
 
-    turtle.colormode(255)
-
     # Set up the window
     wn = turtle.Screen()
-    wn.setup(1280,720)
-    wn.setworldcoordinates(0,0,1280,720)
+    wn.setup(1280, 720)
+    wn.setworldcoordinates(0, 0, 1280, 720)
+    wn.colormode(255)
+
+    alistFreq = freq
+    if len(freq) > 10:
+        alistFreq = sorted(freq.items(), key=lambda x: x[1])
+        alistFreq = dict(alistFreq[:5] + alistFreq[-5:])
 
     origin = Vec2D(20, 20)
-    # Draw the axis
-    drawAxis(wn, origin, freq)
-    # Draw the bars
-    drawBars(wn, origin, freq)
-    turtle.onclick(onclickf)
+    drawAxis(wn, origin, alistFreq)
+    drawBars(wn, origin, alistFreq)
+
+    buttons = [Button(wn, Vec2D(1000, 600), 100, 50, "Draw all"),
+               Button(wn, Vec2D(1000, 500), 100, 50, "Draw frquency smallest 5 and largest 5"),
+               Button(wn, Vec2D(1000, 400), 100, 50, "sort by value"),
+               Button(wn, Vec2D(1000, 300), 100, 50, "Guassian Distribution!!")]
+
+    for button in buttons:
+        button.draw()
+
+    def onclickf(x, y):
+        flag = 0
+        for i in range(len(buttons)):
+            if buttons[i].clicked(x, y):
+                flag = i+1
+                break
+        match flag:
+            case 0:
+                return
+            case 1:
+                wn.clear()
+                drawAxis(wn, origin, freq)
+                drawBars(wn, origin, freq)
+            case 2:
+                wn.clear()
+                drawAxis(wn, origin, alistFreq)
+                drawBars(wn, origin, alistFreq)
+            case 3:
+                wn.clear()
+                freqValue = dict(sorted(freq.items(), key=lambda x: x[0]))
+                drawAxis(wn, origin, freqValue)
+                drawBars(wn, origin, freqValue)
+            case 4:
+                wn.clear()
+                generateList = [random.gauss(50, 30) for _ in range(10000)]
+                generateList = [int(x) for x in generateList]
+                generateList = freqTable(generateList)
+                generateList = dict(sorted(generateList.items(), key=lambda x: x[0]))
+                drawAxis(wn, origin, generateList)
+                drawBars(wn, origin, generateList)
+
+        for b in buttons:
+            b.draw()
+        wn.onclick(onclickf)
+
+    wn.onclick(onclickf)
 
     turtle.mainloop()
     turtle.TurtleScreen._RUNNING = True
@@ -135,10 +223,7 @@ def main():
     alistFreq = freqTable(alist)
     print(alistFreq)
 
-    # if len(alistFreq) > 10:
-    #     alistFreq = sorted(alistFreq.items(), key=lambda x: x[1])
-    #     alistFreq = dict(alistFreq[:5] + alistFreq[-5:])
-    alistFreq =  dict(sorted(alistFreq.items(), key=lambda x: x[1]))
+    alistFreq = dict(sorted(alistFreq.items(), key=lambda x: x[1]))
     app(alistFreq)
 
     aga = input("Do you want to continue? (yes/no) : ")
