@@ -15,6 +15,11 @@ from turtle import Vec2D
 import random
 
 
+def moveTurtle(t: turtle.RawTurtle, x: float, y: float):
+    t.penup()
+    t.goto(x, y)
+    t.pendown()
+
 class Button:
 
     def __init__(self, wn: turtle.Screen, pos: Vec2D, width: int, height: int, text: str):
@@ -128,9 +133,9 @@ def drawBars(wn: turtle.Screen, origin: Vec2D, freq: dict[int, int]):
         t.end_fill()
 
         pos = t.pos()
-        t.teleport(pos[0]-(oneUnit/2), pos[1] - 25)
+        moveTurtle(t,pos[0]-(oneUnit/2), pos[1] - 25)
         t.write(f"{key}", font=("Arial", 10, "normal"))
-        t.teleport(pos[0], pos[1])
+        moveTurtle(t,pos[0], pos[1])
 
         t.penup()
         t.forward(oneUnit * (0.5-0.5*lengthFeq/(lengthFeq+3)))

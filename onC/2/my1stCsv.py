@@ -10,5 +10,5 @@ with open("query.csv","r",encoding="utf8") as inFile:
             col += 1
         print("The magntiude in col",col)
         for aLine in theReader:
-            print(aLine)
+            # print(aLine)
             outFile.write(aLine[col] + '\n')
