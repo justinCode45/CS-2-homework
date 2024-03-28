@@ -3,12 +3,14 @@
 # Email Address : justin.sc12@nycu.edu.tw
 # HW Number : 4
 # Description :
-# Last Changed : 2024/3/17
+# Last Changed : 2024/3/27
 # Dependencies : Python 3.12.2
 # Additional :
 #   1. Colorful bars
 #   2. Sort by value or frequency
 #   3. Draw all or draw the smallest 5 and largest 5
+#   4. Add number
+# Thanks to 112652022 for the inspiration
 
 import turtle
 from turtle import Vec2D
@@ -77,6 +79,8 @@ def freqTable(alist: list[int]) -> dict[int, int]:
         freq[i] = freq.get(i, 0) + 1
 
     sorted_freq = dict(sorted(freq.items()))
+
+
 
     return sorted_freq
 
@@ -147,13 +151,18 @@ def drawBars(wn: turtle.Screen, origin: Vec2D, freq: dict[int, int]):
 
 def app(freq: dict[int, int]):
 
+    print(f"{"VALUE":>10}  |{"FREQUENCY":>10}")
+    print(f"{"-"*12}|{"-"*10}")
+    for key,value in freq.items():
+        print(f"{key:>10}  |{value:>10}")
+
     # Set up the window
     wn = turtle.Screen()
     wn.setup(1280, 720)
     wn.setworldcoordinates(0, 0, 1280, 720)
     wn.colormode(255)
 
-    alistFreq = freq
+    alistFreq = dict(sorted(freq.items()))
     if len(freq) > 10:
         alistFreq = sorted(freq.items(), key=lambda x: x[1])
         alistFreq = dict(alistFreq[:5] + alistFreq[-5:])
@@ -162,15 +171,16 @@ def app(freq: dict[int, int]):
     drawAxis(wn, origin, alistFreq)
     drawBars(wn, origin, alistFreq)
 
-    buttons = [Button(wn, Vec2D(1000, 600), 100, 50, "Draw all"),
-               Button(wn, Vec2D(1000, 500), 100, 50, "Draw frquency smallest 5 and largest 5"),
+    buttons = [Button(wn, Vec2D(1000, 600), 100, 50, "sort by frequency"),
+               Button(wn, Vec2D(1000, 500), 100, 50, "Default mode"),
                Button(wn, Vec2D(1000, 400), 100, 50, "sort by value"),
-               Button(wn, Vec2D(1000, 300), 100, 50, "Guassian Distribution!!")]
+               Button(wn, Vec2D(1000, 200), 100, 50, "Add number")]
 
     for button in buttons:
         button.draw()
 
     def onclickf(x, y):
+        nonlocal freq
         flag = 0
         for i in range(len(buttons)):
             if buttons[i].clicked(x, y):
@@ -193,20 +203,21 @@ def app(freq: dict[int, int]):
                 drawAxis(wn, origin, freqValue)
                 drawBars(wn, origin, freqValue)
             case 4:
-                wn.clear()
-                generateList = [random.gauss(50, 30) for _ in range(10000)]
-                generateList = [int(x) for x in generateList]
-                generateList = freqTable(generateList)
-                generateList = dict(sorted(generateList.items(), key=lambda x: x[0]))
-                drawAxis(wn, origin, generateList)
-                drawBars(wn, origin, generateList)
+                innum = wn.textinput("Add number", "Please enter a sequence of intergr in [1,99]")
+                if innum is not None:
+                    innum = [int(x) for x in innum.split() if x.isdigit()]
+                    for i in range(len(innum)):
+                        freq[innum[i]] = freq.get(innum[i], 0) + 1
+                    freq = dict(sorted(freq.items(),key=lambda x: x[1]))
+                    wn.clear()
+                    drawAxis(wn, origin, freq)
+                    drawBars(wn, origin, freq)
 
         for b in buttons:
             b.draw()
         wn.onclick(onclickf)
 
     wn.onclick(onclickf)
-
     turtle.mainloop()
     turtle.TurtleScreen._RUNNING = True
 
@@ -226,7 +237,7 @@ def main():
     alist.sort()
     print(alist)
     alistFreq = freqTable(alist)
-    print(alistFreq)
+    
 
     alistFreq = dict(sorted(alistFreq.items(), key=lambda x: x[1]))
     app(alistFreq)
