@@ -183,22 +183,17 @@ def strengthOfPPMCC(ppmcc: float) -> str:
 
 def gen_handle_click(boxlist: list[Box], quakeData: list[dict], lable: Label, wn: turtle.Screen):
     
-    maxkeylen = max([len(key) for key in quakeData[0].keys()])
-    lableText = "re = ''\n"
-    for key in quakeData[0].keys():
-        lableText += f"re += f\"{key:>{maxkeylen}} : {{{{quakeData[{{0}}][\'{key}\']}}}}\\n\"\n"
-    # print()
-    lableText += "lable.text = re"
-    # print(lableText)
-
     def handle_click(x: int, y: int):
         nonlocal quakeData
         nonlocal lable
+        maxlen = max([len(q) for q in quakeData])
         for box in boxlist:
             if box.clicked(x, y):
-                exec(lableText.format(boxlist.index(box)), globals(), locals())
-                break
-        
+                lable.text = ""
+                for di in quakeData[boxlist.index(box)]:
+                    for key, value in di.items():
+                        lable.text += f"{key:{maxlen}}: {value[key]}\n"
+                    
         lable.draw()
         wn.update()
         wn.onclick(handle_click)
