@@ -7,15 +7,16 @@
 # Dependencies : Python 3.12.2
 # Additional :
 #   1. Click on the dot to see the detail of the data
-# Note:
-#   1. Please install chinese font in your system, or the chinese character will not be displayed correctly
-#   2. Set the data file name to DATAFILE.
-#   3. Set the key of magnitude to KEYOFMAG.
-#   4. Set the key of depth to KEYOFDEPTH.
+#   2. CLick on the "Get New Data" button to get new earthquake data
+#   3. Neural Network is implemented to predict the magnitude of the earthquake
+#      The neural network is not trained, the weights and biases are randomly generated.
+#      Backpropagation is not implemented. 
+#   
 import csv
 import turtle
 from turtle import Vec2D
 from urllib import request
+import numpy as np
 
 KEYOFMAG = "mag"
 # KEYOFMAG = "magnitude"
@@ -27,12 +28,12 @@ WIDTH = 1280
 HEIGHT = 720
 
 
-def get_quake_data(year: int) -> list[dict]:
+def get_quake_data(year: int, range=2) -> list[dict]:
     url = "https://earthquake.usgs.gov/fdsnws/event/1/query"
     params = {
         "format": "csv",
-        "starttime": f"{year}-01-01",
-        "endtime": f"{year}-01-02",
+        "starttime": f"{year-range}-01-01",
+        "endtime": f"{year}-12-02",
         "minlatitude": 21.9267,
         "maxlatitude": 24.9571,
         "minlongitude": 119.8579,
@@ -78,6 +79,35 @@ class Label(Box):
         self.t.penup()
         self.t.goto(self.x, self.y)
         self.t.write(self.text, font=("Courier", 11, "normal"))
+        self.wn.update()
+
+
+class Button(Box):
+    def __init__(self, x: int, y: int, width: int, height: int, wn: turtle.Screen, texti: str = ""):
+        super().__init__(x, y, width, height, wn)
+        self.text = texti
+        self.t = turtle.RawTurtle(wn)
+        self.t.hideturtle()
+
+    def draw(self):
+        self.t.clear()
+        self.t.hideturtle()
+        self.t.speed(0)
+        self.t.penup()
+        self.t.goto(self.x, self.y)
+        self.t.pendown()
+        self.t.setheading(0)
+        self.t.forward(self.width)
+        self.t.setheading(90)
+        self.t.forward(self.height)
+        self.t.setheading(180)
+        self.t.forward(self.width)
+        self.t.setheading(270)
+        self.t.forward(self.height)
+        self.t.penup()
+        self.t.goto(self.x + self.width//2, self.y + self.height//2)
+        self.t.write(self.text, align="center",
+                     font=("Arial", 12, "normal"))
         self.wn.update()
 
 
@@ -205,43 +235,14 @@ def strengthOfPPMCC(ppmcc: float) -> str:
         return "No Correlation"
 
 
-def gen_handle_click(boxlist: list[Box], quakeData: list[dict], lable: Label, wn: turtle.Screen):
-    
-    def handle_click(x: int, y: int):
-        nonlocal quakeData
-        nonlocal lable
-        maxlen = max([len(q) for q in quakeData])
-        for box in boxlist:
-            if box.clicked(x, y):
-                lable.text = ""
-                for di in quakeData[boxlist.index(box)]:
-                    for key, value in di.items():
-                        lable.text += f"{key:{maxlen}}: {value[key]}\n"
-                    
-        lable.draw()
-        wn.update()
-        wn.onclick(handle_click)
-
-    return handle_click
-
-
-def app(quakeData: list[dict]):
-    wn = turtle.Screen()
-    wn.setup(WIDTH, HEIGHT)
-    wn.setworldcoordinates(0, 0, WIDTH, HEIGHT)
-    wn.title("Quake Graph")
-    t = turtle.RawTurtle(wn)
-    t.color(0, 0, 0)
-
-    boxlist = ScatterPlot(wn, Vec2D(50, 50), 600, 600,
-                          [(float(q[KEYOFDEPTH]), float(q[KEYOFMAG])) for q in quakeData])
 class APP():
 
     def __init__(self, _quakeData: list[dict]):
         self.quakeData = _quakeData
         self.wn = turtle.Screen()
         self.pointlist: list[Box] = []
-        self.buttonlist = []
+        self.button_getNewData = Button(
+            800, 50, 300, 50, self.wn, "Get New Data")
         self.lable = Label(800, 100, 300, 100, self.wn,
                            "Click on the dot to see the data")
         self.wn.setup(WIDTH, HEIGHT)
@@ -265,6 +266,7 @@ class APP():
                 align="center", font=("Arial", 12, "normal"))
         self.pointlist = boxlist
         self.lable.draw()
+        self.button_getNewData.draw()
         self.wn.onclick(self.gen_handle_click())
 
     def run(self):
@@ -273,6 +275,7 @@ class APP():
 
     def gen_handle_click(self):
         maxkeylen = max([len(key) for key in self.quakeData[0].keys()])
+
         def handle_click(x: int, y: int):
             for point in self.pointlist:
                 if point.clicked(x, y):
@@ -280,6 +283,9 @@ class APP():
                     for key, value in self.quakeData[self.pointlist.index(point)].items():
                         self.lable.text += f"{key:{maxkeylen}}: {value}\n"
                     break
+            if self.button_getNewData.clicked(x, y):
+                self.quakeData = get_quake_data(2024)
+                self.draw()
 
             self.lable.draw()
             self.wn.update()
@@ -298,8 +304,8 @@ def main():
     print([float(q[KEYOFMAG]) for q in quakeData])
     frqt = freqTable([float(q[KEYOFMAG]) for q in quakeData])
     print("Frequency Table of Magnitude: ")
-    print(f"{"VALUE":>10}  |{"FREQUENCY":>10}")
-    print(f"{"-"*12}|{"-"*10}")
+    print(f"{'VALUE':>10}  |{'FREQUENCY':>10}")
+    print(f"{'-'*12}|{'-'*10}")
     for key, value in frqt.items():
         print(f"{key:>10}  |{value:>10}")
     ppmcc = PPMCC([float(q[KEYOFDEPTH]) for q in quakeData],
@@ -311,5 +317,31 @@ def main():
     app.run()
 
 
+def sigmoid(x):
+    return 1/(1+np.exp(-x))
+
+
+def sigmoid_derivative(x):
+    return sigmoid(x)*(1-sigmoid(x))
+
+
+def additional_function():
+    pass
+    layer_size = [3, 4, 1]
+    weights = [np.random.rand(layer_size[i+1], layer_size[i])
+               for i in range(len(layer_size)-1)]
+    biases = [np.random.rand(layer_size[i+1])
+              for i in range(len(layer_size)-1)]
+    userinput = input("Please enter depth, longitude, latitude:")
+    userinput = userinput.split(" ")
+    userinput = [float(i) for i in userinput]
+    a = userinput
+    for i in range(len(layer_size)-1):
+       a = sigmoid(weights[i]@a + biases[i])
+            
+    print("Magnitude prediction: ", a[0]*10)
+
 if __name__ == "__main__":
     main()
+    # Additional Function
+    additional_function()
