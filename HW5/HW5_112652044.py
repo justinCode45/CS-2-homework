@@ -15,6 +15,7 @@
 import csv
 import turtle
 from turtle import Vec2D
+from urllib import request
 
 KEYOFMAG = "mag"
 # KEYOFMAG = "magnitude"
@@ -24,6 +25,26 @@ DATAFILE = "tw2023Quake.csv"
 
 WIDTH = 1280
 HEIGHT = 720
+
+
+def get_quake_data(year: int) -> list[dict]:
+    url = "https://earthquake.usgs.gov/fdsnws/event/1/query"
+    params = {
+        "format": "csv",
+        "starttime": f"{year}-01-01",
+        "endtime": f"{year}-01-02",
+        "minlatitude": 21.9267,
+        "maxlatitude": 24.9571,
+        "minlongitude": 119.8579,
+        "maxlongitude": 123.0428,
+        "minmagnitude": 4.5,
+    }
+    response = request.urlopen(
+        url + "?" + "&".join([f"{k}={v}" for k, v in params.items()]))
+    reader = csv.reader(response.read().decode().splitlines())
+    header = next(reader)
+    quake_data = [dict(zip(header, row)) for row in reader]
+    return quake_data
 
 
 class Box:
@@ -38,6 +59,9 @@ class Box:
         if self.x < x < self.x + self.width and self.y < y < self.y + self.height:
             return True
         return False
+
+    def do():
+        pass
 
 
 class Label(Box):
@@ -75,7 +99,7 @@ def moveTurtle(t: turtle.RawTurtle, x: float, y: float):
 
 def getQuakeData() -> list[dict]:
     quakeData = []
-    with open(DATAFILE, "r",encoding="utf8") as f:
+    with open(DATAFILE, "r", encoding="utf8") as f:
         reader = csv.reader(f)
         header = next(reader)
         for row in reader:
@@ -211,21 +235,57 @@ def app(quakeData: list[dict]):
 
     boxlist = ScatterPlot(wn, Vec2D(50, 50), 600, 600,
                           [(float(q[KEYOFDEPTH]), float(q[KEYOFMAG])) for q in quakeData])
+class APP():
 
-    ppmcc = PPMCC([float(q[KEYOFDEPTH]) for q in quakeData],
-                  [float(q[KEYOFMAG]) for q in quakeData])
-    strengthPPMCC = strengthOfPPMCC(ppmcc)
-    moveTurtle(t, 900, 600)
-    t.write(f"PPMCC: {ppmcc:.4f}", align="center",
-            font=("Arial", 12, "normal"))
-    moveTurtle(t, 900, 570)
-    t.write(f"Strength: {strengthPPMCC}",
-            align="center", font=("Arial", 12, "normal"))
+    def __init__(self, _quakeData: list[dict]):
+        self.quakeData = _quakeData
+        self.wn = turtle.Screen()
+        self.pointlist: list[Box] = []
+        self.buttonlist = []
+        self.lable = Label(800, 100, 300, 100, self.wn,
+                           "Click on the dot to see the data")
+        self.wn.setup(WIDTH, HEIGHT)
+        self.wn.setworldcoordinates(0, 0, WIDTH, HEIGHT)
+        self.wn.title("Quake Graph")
 
-    lable = Label(800, 100, 300, 100, wn, "Click on the dot to see the data")
-    lable.draw()
-    wn.onclick(gen_handle_click(boxlist, quakeData, lable, wn))
-    wn.mainloop()
+    def draw(self):
+        self.wn.clear()
+        t = turtle.RawTurtle(self.wn)
+        t.color(0, 0, 0)
+        boxlist = ScatterPlot(self.wn, Vec2D(50, 50), 600, 600,
+                              [(float(q[KEYOFDEPTH]), float(q[KEYOFMAG])) for q in self.quakeData])
+        ppmcc = PPMCC([float(q[KEYOFDEPTH]) for q in self.quakeData],
+                      [float(q[KEYOFMAG]) for q in self.quakeData])
+        strengthPPMCC = strengthOfPPMCC(ppmcc)
+        moveTurtle(t, 900, 600)
+        t.write(f"PPMCC: {ppmcc:.4f}", align="center",
+                font=("Arial", 12, "normal"))
+        moveTurtle(t, 900, 570)
+        t.write(f"Strength: {strengthPPMCC}",
+                align="center", font=("Arial", 12, "normal"))
+        self.pointlist = boxlist
+        self.lable.draw()
+        self.wn.onclick(self.gen_handle_click())
+
+    def run(self):
+        self.draw()
+        self.wn.mainloop()
+
+    def gen_handle_click(self):
+        maxkeylen = max([len(key) for key in self.quakeData[0].keys()])
+        def handle_click(x: int, y: int):
+            for point in self.pointlist:
+                if point.clicked(x, y):
+                    self.lable.text = ""
+                    for key, value in self.quakeData[self.pointlist.index(point)].items():
+                        self.lable.text += f"{key:{maxkeylen}}: {value}\n"
+                    break
+
+            self.lable.draw()
+            self.wn.update()
+            self.wn.onclick(handle_click)
+
+        return handle_click
 
 
 def main():
@@ -246,7 +306,9 @@ def main():
                   [float(q[KEYOFMAG]) for q in quakeData])
     print("PPMCC: ", ppmcc)
     print("Strength: ", strengthOfPPMCC(ppmcc))
-    app(quakeData)
+
+    app = APP(quakeData)
+    app.run()
 
 
 if __name__ == "__main__":
