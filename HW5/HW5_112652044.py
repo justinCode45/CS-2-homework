@@ -2,16 +2,14 @@
 # Author : Justin Chen
 # Email Address : justin.sc12@nycu.edu.tw
 # HW Number : 5
-# Description :
-# Last Changed : 2024/3/27
-# Dependencies : Python 3.12.2
+# Description : This program will draw a scatter plot of the quake data
+# Last Changed : 2024/4/7
+# Dependencies : Python 3.12.2, turtle, numpy, network connection
 # Additional :
 #   1. Click on the dot to see the detail of the data
 #   2. CLick on the "Get New Data" button to get new earthquake data
-#   3. Neural Network is implemented to predict the magnitude of the earthquake
-#      The neural network is not trained, the weights and biases are randomly generated.
-#      Backpropagation is not implemented. 
-#   
+#   3. Neural Network to predict the magnitude of the earthquake
+#      (Not work well...)
 import csv
 import turtle
 from turtle import Vec2D
@@ -38,7 +36,7 @@ def get_quake_data(year: int, range=2) -> list[dict]:
         "maxlatitude": 24.9571,
         "minlongitude": 119.8579,
         "maxlongitude": 123.0428,
-        "minmagnitude": 4.5,
+        "minmagnitude": 2.5,
     }
     response = request.urlopen(
         url + "?" + "&".join([f"{k}={v}" for k, v in params.items()]))
@@ -325,23 +323,90 @@ def sigmoid_derivative(x):
     return sigmoid(x)*(1-sigmoid(x))
 
 
-def additional_function():
-    pass
-    layer_size = [3, 4, 1]
+def prepare_data():
+    data = get_quake_data(2024, 30)
+    dataR = []
+    for q in data:
+        dataR.append([np.array([[float(q['depth']), float(q['longitude']), float(q['latitude'])]]).T,
+                      np.array([[float(q['mag'])/10]]).T])
+    return dataR
+
+
+def train_network(layer_size):
+    data = prepare_data()
+    # Randomly initialize weights and biases
     weights = [np.random.rand(layer_size[i+1], layer_size[i])
                for i in range(len(layer_size)-1)]
-    biases = [np.random.rand(layer_size[i+1])
+    biases = [np.array([np.random.rand(layer_size[i+1])]).T
               for i in range(len(layer_size)-1)]
-    userinput = input("Please enter depth, longitude, latitude:")
-    userinput = userinput.split(" ")
-    userinput = [float(i) for i in userinput]
-    a = userinput
-    for i in range(len(layer_size)-1):
-       a = sigmoid(weights[i]@a + biases[i])
-            
-    print("Magnitude prediction: ", a[0]*10)
+    # Train the network
+    for k in range(100):
+        for d in data:
+            zs = []
+            a = d[0]
+            activations: list[np.ndarray] = [a]
+            # Forward pass
+            for i in range(len(layer_size)-1):
+                z = weights[i]@a + biases[i]
+                zs.append(z)
+                a = sigmoid(z)
+                activations.append(a)
+            # Backpropagation
+            gradint_a: list[np.ndarray] = [[]
+                                           for _ in range(len(layer_size)-1)]
+            gradint_b: list[np.ndarray] = [[]
+                                           for _ in range(len(layer_size)-1)]
+            gradint_w: list[np.ndarray] = [[]
+                                           for _ in range(len(layer_size)-1)]
+            for i in range(len(layer_size)-2, -1, -1):
+                if i == len(layer_size)-2:
+                    gradint_a[i] = 2*(activations[-1] - d[1])
+                else:
+                    gradint_a[i] = (weights[i+1].T@gradint_b[i+1])
+                gradint_b[i] = gradint_a[i]*sigmoid_derivative(zs[i])
+                gradint_w[i] = np.dot(gradint_b[i], activations[i].T)
+            # Update weights and biases
+            for i in range(len(layer_size)-1):
+                weights[i] -= gradint_w[i]
+                biases[i] -= gradint_b[i]
+        print(k)
+    return weights, biases
+
+
+def load_network():
+    weightsTmp = np.load("weights.npz", allow_pickle=True)
+    biasesTmp = np.load("biases.npz", allow_pickle=True)
+    weights = []
+    biases = []
+    for i in weightsTmp:
+        weights.append(weightsTmp[i])
+    for i in biasesTmp:
+        biases.append(biasesTmp[i])
+    return weights, biases
+
+
+def neural_network():
+    layer_size = [3, 4, 1]
+    try:
+        weights, biases = load_network()
+    except:
+        weights, biases = train_network(layer_size)
+        np.savez("biases.npz", *biases)
+        np.savez("weights.npz", *weights)
+
+    for _ in range(10):
+        rawinput = input("Please enter depth, longitude, latitude(eg. 100 121 23):\n")
+        rawinput = rawinput.strip()
+        rawinput = rawinput.split(" ")
+        rawinput = [float(i) for i in rawinput]
+        a = np.array([rawinput]).T
+        for i in range(len(layer_size)-1):
+            a = sigmoid(weights[i]@a + biases[i])
+
+        print(f"Magnitude prediction: {a[0][0]*10:.3f}")
+
 
 if __name__ == "__main__":
     main()
     # Additional Function
-    additional_function()
+    neural_network()
