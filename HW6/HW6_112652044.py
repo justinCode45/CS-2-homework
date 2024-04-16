@@ -5,7 +5,7 @@ brulKernel = [[1, 2, 1], [2, 1, 2], [1, 2, 1]]
 sharpKernel = [[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]]
 
 
-def mirrorX(image: Image) -> Image:
+def flipX(image: Image) -> Image:
     result = EmptyImage(image.width, image.height)
     for row in range(image.height):
         for col in range(image.width):
@@ -13,11 +13,27 @@ def mirrorX(image: Image) -> Image:
     return result
 
 
-def mirrorY(image: Image) -> Image:
+def flipY(image: Image) -> Image:
     result = EmptyImage(image.width, image.height)
     for row in range(image.height):
         for col in range(image.width):
             result.setPixel(col, row, image.getPixel(col, image.height-row-1))
+    return result
+
+
+def mirrorX(image: Image):
+    result = image.copy()
+    for row in range(image.height):
+        for col in range(image.width//2):
+            result.setPixel(image.width-col-1, row, image.getPixel(col, row))
+    return result
+
+
+def mirrorY(image: Image):
+    result = image.copy()
+    for row in range(image.height//2):
+        for col in range(image.width):
+            result.setPixel(col, image.height-row-1, image.getPixel(col, row))
     return result
 
 
@@ -60,9 +76,15 @@ def resize(image: Image, width: int, height: int) -> Image:
     result = EmptyImage(width, height)
     for row in range(height):
         for col in range(width):
-            y = row * image.width // width
-            x = col * image.height // height
-            result.setPixel(col, row, image.getPixel(x, y))
+            x = col * image.width / width
+            y = row * image.height / height
+            result.setPixel(col, row, image.getPixel(int(x), int(y)))
+    return result
+
+
+def mosaic(image: Image) -> Image:
+    result = resize(image, image.width//10, image.height//10)
+    result = resize(result, image.width, image.height)
     return result
 
 
@@ -74,23 +96,30 @@ def main():
     except FileNotFoundError:
         print("File not found.")
         return
-    image = resize(image, image.width//3, image.height//3)
-    commond = input("Enter the command (v,b,h,s): ")
+    image = resize(image, image.width//2, image.height//2)
+    commond = input("Enter the command (v,b,h,s,f,g): ")
+    image_dict: dict[str, Image] = {}
 
     for c in commond:
 
         win = ImageWin(image.width, image.height, "Image")
+        if c not in image_dict.keys():
 
-        if c == 'v':
-            result = mirrorX(image)
-        elif c == 'h':
-            result = mirrorY(image)
-        elif c == 'b':
-            result = convolution(image, brulKernel)
-        elif c == 's':
-            result = convolution(image, sharpKernel)
-
-        result.draw(win)
+            if c == 'v':
+                image_dict[c] = mirrorY(image)
+            elif c == 'h':
+                image_dict[c] = mirrorX(image)
+            elif c == 'b':
+                image_dict[c] = convolution(image, brulKernel)
+            elif c == 's':
+                image_dict[c] = convolution(image, sharpKernel)
+            elif c == 'm':
+                image_dict[c] = mosaic(image)
+            elif c == 'f':
+                image_dict[c] = flipX(image)
+            elif c == 'g':
+                image_dict[c] = flipY(image)
+        image_dict[c].draw(win)
 
         win.exit_on_click()
 

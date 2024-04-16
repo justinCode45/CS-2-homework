@@ -8,7 +8,8 @@
 	},
 	"postCreateCommand": "bash ./.devcontainer/postCreateCommand.sh",
 	"containerEnv": {
-		"DISPLAY": "host.docker.internal:0"
+		"DISPLAY": "host.docker.internal:0",
+		"PYTHONPATH" : "/workspaces/CS-2-homework/package"
 	},
 	"customizations": {
 		"vscode": {
