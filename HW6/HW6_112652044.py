@@ -1,3 +1,13 @@
+# File Name : HW6_112652044.py
+# Author : Justin Chen
+# Email Address : justin.sc12@nycu.edu.tw
+# HW Number : 6
+# Description : This program is a image processing program that can flip, mirror, convolution, resize and mosaic the image. 
+# Last Changed : 2024/4/18
+# Dependencies : Python 3.12.2, turtle, numpy, network connection
+# Additional :
+#   1. faster
+#   2. flip and mosaic
 from image import *
 
 
@@ -119,6 +129,8 @@ def main():
                 image_dict[c] = flipX(image)
             elif c == 'g':
                 image_dict[c] = flipY(image)
+            else:
+                continue
         image_dict[c].draw(win)
 
         win.exit_on_click()
