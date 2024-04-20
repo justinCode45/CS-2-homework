@@ -2,7 +2,7 @@
 # Author : Justin Chen
 # Email Address : justin.sc12@nycu.edu.tw
 # HW Number : 6
-# Description : This program is a image processing program that can flip, mirror, convolution, resize and mosaic the image. 
+# Description : This program is a image processing program that can flip, mirror, convolution, resize and mosaic the image.
 # Last Changed : 2024/4/18
 # Dependencies : Python 3.12.2, turtle, numpy, network connection
 # Additional :
@@ -132,7 +132,6 @@ def main():
             else:
                 continue
         image_dict[c].draw(win)
-
         win.exit_on_click()
 
 
