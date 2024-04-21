@@ -4,7 +4,7 @@
 # HW Number : 6
 # Description : This program will process image and compress the image using SVD.
 # Last Changed : 2024/4/21
-# Dependencies : Python 3.12.2, numpy 
+# Dependencies : Python 3.12.2, numpy
 # Additional :
 #   1. SVD compress function is implemented.
 #   2. flipX and flipY function is implemented.
@@ -14,7 +14,7 @@ isNumPyExist = True
 
 try:
     import numpy as np
-except :
+except:
     isNumPyExist = False
     print("Please install numpy to enable svdcompress function.")
 
@@ -104,11 +104,12 @@ def mosaic(image: Image) -> Image:
     result = resize(result, image.width, image.height)
     return result
 
+
 def svdcompress(image: Image, k: int) -> Image:
     # convert image to matrix
-    matrixR = np.zeros((image.height, image.width ))
-    matrixG = np.zeros((image.height, image.width ))
-    matrixB = np.zeros((image.height, image.width ))
+    matrixR = np.zeros((image.height, image.width))
+    matrixG = np.zeros((image.height, image.width))
+    matrixB = np.zeros((image.height, image.width))
     for row in range(image.height):
         for col in range(image.width):
             pixel = image.getPixel(col, row)
@@ -139,6 +140,7 @@ def svdcompress(image: Image, k: int) -> Image:
             blue = int(min(255, max(0, matrixB[row][col])))
             result.setPixel(col, row, Pixel(red, green, blue))
     return result
+
 
 def main():
 
