@@ -8,6 +8,7 @@
 # Additional :
 #   1. SVD compress function is implemented.
 #   2. flipX and flipY function is implemented.
+#   3. faster 
 
 from image import *
 isNumPyExist = True
@@ -40,17 +41,17 @@ def flipY(image: Image) -> Image:
 
 def mirrorX(image: Image):
     result = image.copy()
-    for row in range(image.height):
-        for col in range(image.width//2):
-            result.setPixel(image.width-col-1, row, image.getPixel(col, row))
+    for row in range(image.height//2):
+        for col in range(image.width):
+            result.setPixel(col, image.height-row-1, image.getPixel(col, row))
     return result
 
 
 def mirrorY(image: Image):
     result = image.copy()
-    for row in range(image.height//2):
-        for col in range(image.width):
-            result.setPixel(col, image.height-row-1, image.getPixel(col, row))
+    for row in range(image.height):
+        for col in range(image.width//2):
+            result.setPixel(image.width-col-1, row, image.getPixel(col, row))
     return result
 
 
@@ -150,8 +151,9 @@ def main():
     except FileNotFoundError:
         print("File not found.")
         return
+    # enable if the image is too large
     image = resize(image, image.width//2, image.height//2)
-    commond = input("Enter the command (v,b,h,s,f,g): ")
+    commond = input("Enter the command (v,b,h,s,f,g,m): ")
     image_dict: dict[str, Image] = {}
 
     for c in commond:
