@@ -2,14 +2,21 @@
 # Author : Justin Chen
 # Email Address : justin.sc12@nycu.edu.tw
 # HW Number : 6
-# Description : This program is a image processing program that can flip, mirror, convolution, resize and mosaic the image.
-# Last Changed : 2024/4/18
-# Dependencies : Python 3.12.2, turtle, numpy, network connection
+# Description : This program will process image and compress the image using SVD.
+# Last Changed : 2024/4/21
+# Dependencies : Python 3.12.2, numpy 
 # Additional :
-#   1. faster
-#   2. flip and mosaic
-from image import *
+#   1. SVD compress function is implemented.
+#   2. flipX and flipY function is implemented.
 
+from image import *
+isNumPyExist = True
+
+try:
+    import numpy as np
+except :
+    isNumPyExist = False
+    print("Please install numpy to enable svdcompress function.")
 
 brulKernel = [[1, 2, 1], [2, 1, 2], [1, 2, 1]]
 sharpKernel = [[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]]
@@ -97,6 +104,41 @@ def mosaic(image: Image) -> Image:
     result = resize(result, image.width, image.height)
     return result
 
+def svdcompress(image: Image, k: int) -> Image:
+    # convert image to matrix
+    matrixR = np.zeros((image.height, image.width ))
+    matrixG = np.zeros((image.height, image.width ))
+    matrixB = np.zeros((image.height, image.width ))
+    for row in range(image.height):
+        for col in range(image.width):
+            pixel = image.getPixel(col, row)
+            matrixR[row][col] = pixel.red
+            matrixG[row][col] = pixel.green
+            matrixB[row][col] = pixel.blue
+    # svd
+    uR, sR, vhR = np.linalg.svd(matrixR, full_matrices=False)
+    uG, sG, vhG = np.linalg.svd(matrixG, full_matrices=False)
+    uB, sB, vhB = np.linalg.svd(matrixB, full_matrices=False)
+    kR = int(k * len(sR) / 100)
+    kG = int(k * len(sG) / 100)
+    kB = int(k * len(sB) / 100)
+    # compress
+    sR[kR:] = 0
+    sG[kG:] = 0
+    sB[kB:] = 0
+    matrixR = np.dot(uR, np.dot(np.diag(sR), vhR))
+    matrixG = np.dot(uG, np.dot(np.diag(sG), vhG))
+    matrixB = np.dot(uB, np.dot(np.diag(sB), vhB))
+
+    # convert matrix to image
+    result = EmptyImage(image.width, image.height)
+    for row in range(image.height):
+        for col in range(image.width):
+            red = int(min(255, max(0, matrixR[row][col])))
+            green = int(min(255, max(0, matrixG[row][col])))
+            blue = int(min(255, max(0, matrixB[row][col])))
+            result.setPixel(col, row, Pixel(red, green, blue))
+    return result
 
 def main():
 
@@ -133,6 +175,14 @@ def main():
                 continue
         image_dict[c].draw(win)
         win.exit_on_click()
+
+    if not isNumPyExist:
+        return
+    k = int(input("Enter the compression factor k(1~100):"))
+    win = ImageWin(image.width, image.height, "Image")
+    result = svdcompress(image, k)
+    result.draw(win)
+    win.exit_on_click()
 
 
 if __name__ == "__main__":
