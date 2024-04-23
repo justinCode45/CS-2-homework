@@ -5,7 +5,7 @@ from urllib import request
 from math import acos, sin, cos, radians
 
 
-class Point:
+class Vec:
     def __init__(self, _coor: list[float]):
         self.coor: list[float] = _coor
         self.dim: int = len(_coor)
@@ -18,22 +18,22 @@ class Point:
     def __truediv__(self, other: float):
         if other == 0:
             raise ZeroDivisionError
-        return Point([x/other for x in self.coor])
+        return Vec([x/other for x in self.coor])
 
-    def __sub__(self, other: 'Point'):
+    def __sub__(self, other: 'Vec'):
         if self.dim != other.dim:
             raise ValueError('Dimension mismatch')
-        return Point([self.coor[i] - other.coor[i] for i in range(self.dim)])
+        return Vec([self.coor[i] - other.coor[i] for i in range(self.dim)])
 
     def __eq__(self, value: object) -> bool:
-        if not isinstance(value, Point):
+        if not isinstance(value, Vec):
             return False
         return self.coor == value.coor
 
-    def __add__(self, other: 'Point'):
+    def __add__(self, other: 'Vec'):
         if self.dim != other.dim:
             raise ValueError('Dimension mismatch')
-        return Point([self.coor[i] + other.coor[i] for i in range(self.dim)])
+        return Vec([self.coor[i] + other.coor[i] for i in range(self.dim)])
 
     def __str__(self) -> str:
         return str(self.coor)
@@ -41,7 +41,7 @@ class Point:
     def norm(self) -> float:
         return sum([x**2 for x in self.coor])**0.5
 
-    def GCD(self, other: 'Point') -> float:
+    def GCD(self, other: 'Vec') -> float:
         delta_lon = abs(self[1] - other[1])
         fg = sin(radians(self[0])) * sin(radians(other[0])) + cos(
             radians(self[0])) * cos(radians(other[0])) * cos(radians(delta_lon))
@@ -51,7 +51,7 @@ class Point:
         return dd
 
 
-class Data(Point):
+class Data(Vec):
     def __init__(self, _data: list[float], otherinfo: dict[str] = None):
         self.info: dict[str] = otherinfo
         self.cluster: int = -1
@@ -90,13 +90,13 @@ def get_quake_data(year: int, range=2) -> list[Data]:
     return data
 
 
-def kmeans(datalist: list[Data], k: int, repeat: int) -> tuple[list[Data], list[Point], bool]:
+def kmeans(datalist: list[Data], k: int, repeat: int) -> tuple[list[Data], list[Vec], bool]:
     dim = datalist[0].dim
-    centroids: list[Point] = sample(datalist, k)
+    centroids: list[Vec] = sample(datalist, k)
     stable: bool = False
     for ii in range(repeat):
         # print(f'Iteration {ii+1}')
-        new_centroids: list[Point] = [Point([0 for _ in range(dim)])
+        new_centroids: list[Vec] = [Vec([0 for _ in range(dim)])
                                       for _ in range(k)]
         centroids_count: list[int] = [0 for _ in range(k)]
         for data in datalist:
@@ -113,7 +113,7 @@ def kmeans(datalist: list[Data], k: int, repeat: int) -> tuple[list[Data], list[
     return datalist, centroids, stable
 
 
-def draw_map(data: list[Data], centroids: list[Point]):
+def draw_map(data: list[Data], centroids: list[Vec]):
     def color(i: int) -> str:
         colors = ['red', 'blue', 'green', 'yellow', 'purple',
                   'orange', 'brown', 'pink', 'gray', 'black']
