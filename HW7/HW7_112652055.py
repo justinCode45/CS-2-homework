@@ -1,16 +1,20 @@
+# File Name : HW7_112652044.py
+# Author : Justin Chen
+# Email Address : justin.sc12@nycu.edu.tw
+# HW Number : 7
+# Description : This program will process earthquake data and cluster the data using k-means algorithm.
+# Last Changed : 2024/4/25
+# Dependencies : Python 3.12.2, numpy, matplotlib
+# Additional :
+#   1. draw a map
+#   2. use GCD to calculate distance
+#   3. click to show the closest cluster and average magnitude
+
 from math import acos, sin, cos, radians
 from csv import reader
 from random import sample
 import turtle
 from urllib import request
-isNumpy = True
-try:
-    import matplotlib.pyplot as plt
-    import matplotlib.animation as animation
-    import numpy as np
-except:
-    isNumpy = False
-    print("Numpy is not installed")
 
 
 class Vec:
@@ -76,7 +80,7 @@ def readData(filename: str) -> list[Data]:
         header = next(satareader)
         latindex = header.index('latitude')
         lonindex = header.index('longitude')
-        data = [Data([float(row[latindex]), float(row[lonindex])], zip(header, row))
+        data = [Data([float(row[latindex]), float(row[lonindex])], dict(zip(header, row)))
                 for row in satareader]
     return data
 
@@ -97,10 +101,17 @@ def get_quake_data(year: int, range=2) -> list[Data]:
     header = next(datareader)
     latindex = header.index('latitude')
     lonindex = header.index('longitude')
-    data = [Data([float(row[latindex]), float(row[lonindex])], zip(header, row))
+    data = [Data([float(row[latindex]), float(row[lonindex])], dict(zip(header, row)))
             for row in datareader]
     return data
 
+def printCluster(data: list[Data], centroids: list[Vec]):
+    for i in range(len(centroids)):
+        print(f'Cluster {i+1}:')
+        print(f'+----Centroid: ({centroids[i][0]:6.2f}, {centroids[i][1]:6.2f})')
+        for d in data:
+            if d.cluster == i:
+                print(f'|    | ({d.coor[0]:6.2f}, {d.coor[1]:6.2f})')
 
 def kmeans(datalist: list[Data], k: int, repeat: int) -> tuple[list[Data], list[Vec], bool]:
     dim = datalist[0].coor.dim()
@@ -122,13 +133,19 @@ def kmeans(datalist: list[Data], k: int, repeat: int) -> tuple[list[Data], list[
             stable = True
             break
         centroids = new_centroids
+        #output the result
+        print("\033[33mIteration\033[0m", ii+1)
+        printCluster(datalist, centroids)
+        
     return datalist, centroids, stable
 
 
 def color(i: int) -> str:
     colors = ['red', 'blue', 'green', 'yellow', 'purple',
-                'orange', 'brown', 'pink', 'gray', 'black']
+              'orange', 'brown', 'pink', 'gray', 'black']
     return colors[i]
+
+
 def draw_map(data: list[Data], centroids: list[Vec]):
     t = turtle.Turtle()
     wn = turtle.Screen()
@@ -138,66 +155,53 @@ def draw_map(data: list[Data], centroids: list[Vec]):
     t.hideturtle()
     wn.setworldcoordinates(-180, -90, 180, 90)
     wn.bgpic("world.png")
+    clusteravageMag = [0 for _ in range(len(centroids))]
+    clustersize = [0 for _ in range(len(centroids))]
     for d in data:
         t.penup()
         t.goto(d.coor[1], d.coor[0])
         t.pendown()
         t.dot(5, color(d.cluster))
+        clusteravageMag[d.cluster] += float(d.info['mag'])
+        clustersize[d.cluster] += 1
+    clusteravageMag = [clusteravageMag[i] / clustersize[i] if clustersize[i] != 0 else 0 
+                          for i in range(len(centroids))]
     wn.update()
-    wn.exitonclick()
+    p = Vec([0, 0])
+    def click(x, y):
+        nonlocal p
+        p = Vec([y, x])
+        print(f"Clicked at ({y:.2f}, {x:.2f})")
+        wn.bye()
+    wn.onclick(click)
+    wn.mainloop() 
+    c = min(range(len(centroids)), key=lambda i: GCD(p, centroids[i]))
+    print(f"Closest cluster: {c+1}")
+    print(f"Average magnitude: {clusteravageMag[c]:.2f}")
     turtle.TurtleScreen._RUNNING = True
 
-
-def transCoord(lat: float, lon: float) -> Vec:
-    x = cos(radians(lat)) * cos(radians(lon))
-    y = cos(radians(lat)) * sin(radians(lon))
-    z = sin(radians(lat))
-    return Vec([x, y, z, 0])
-
-    
-def draw_3Dmap(data: list[Data], centroids: list[Vec]):
-    for d in data:
-        d.coor = transCoord(d.coor[0], d.coor[1])
-    for c in centroids:
-        c = transCoord(c[0], c[1])
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    for d in data:
-        ax.scatter(d.coor[0], d.coor[1], d.coor[2], c=color(d.cluster))
-    #rotation animation
-    def update(num, data, ax):
-        ax.view_init(elev=10, azim=num)
-    ani = animation.FuncAnimation(fig, update, frames=range(0, 360, 2), fargs=(data, ax))
-    # plt.show()
-    print('Saving gif...')
-    ani.save('quakes.gif', writer='pillow', fps=30)
-    print('Gif saved')
 
 
 def main():
     # filename = 'quakes_2023_6dot5.csv'
     # k = 5
     # repeat = 1000
+    print("Click to show the closest cluster and average magnitude.")
     k = int(input("Enter the number of clusters: "))
     repeat = int(input("Enter the number of iterations: "))
-    raw = input("Enter the data file name: ")
+    raw = input("Enter the data file name(Eenter '0' to load data from web): ")
     filepath = raw.split()
     for filep in filepath:
-        # data = readData(filep)
-        data = get_quake_data(2024, 2)
+        data = readData(filep) if filep != '0' else get_quake_data(2024, 10)
+        # data = get_quake_data(2024, 2)
+        print(f"{"="*10} {filep} {"="*10}")
         data, centroids, isStable = kmeans(data, k, repeat)
+        print("\033[32mFinal Result\033[0m")
         print('Stable' if isStable else 'Unstable')
-        for i in range(k):
-            print(f'Cluster {i+1}:')
-            for d in data:
-                if d.cluster == i:
-                    print(f'  {d.coor[0]:6.2f}, {d.coor[1]:6.2f}')
-            print(f'Centroid: {centroids[i][0]:6.2f}, {centroids[i][1]:6.2f}')
+        printCluster(data, centroids)
+        draw_map(data, centroids)
 
-        if isNumpy:
-            draw_3Dmap(data, centroids)
-        else:
-            draw_map(data, centroids)
+
 
 
 if __name__ == "__main__":
