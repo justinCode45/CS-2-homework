@@ -3,8 +3,10 @@ from csv import reader
 from random import sample
 import turtle
 from urllib import request
-isNumpy = False
+isNumpy = True
 try:
+    import matplotlib.pyplot as plt
+    import matplotlib.animation as animation
     import numpy as np
 except:
     isNumpy = False
@@ -24,21 +26,12 @@ class Vec:
     def __truediv__(self, other: float):
         if other == 0:
             raise ZeroDivisionError
-<<<<<<< HEAD
-        return Vec([x/other for x in self.coor])
-
-    def __sub__(self, other: 'Vec'):
-        if self.dim != other.dim:
-            raise ValueError('Dimension mismatch')
-        return Vec([self.coor[i] - other.coor[i] for i in range(self.dim)])
-=======
         return Vec([x/other for x in self.__coor])
 
     def __sub__(self, other: 'Vec'):
         if self.__dim != other.__dim:
             raise ValueError('Dimension mismatch')
         return Vec([self.__coor[i] - other.__coor[i] for i in range(self.__dim)])
->>>>>>> 012d05f (HW7: start ball)
 
     def __eq__(self, value: object) -> bool:
         if not isinstance(value, Vec):
@@ -46,15 +39,9 @@ class Vec:
         return self.__coor == value.__coor
 
     def __add__(self, other: 'Vec'):
-<<<<<<< HEAD
-        if self.dim != other.dim:
-            raise ValueError('Dimension mismatch')
-        return Vec([self.coor[i] + other.coor[i] for i in range(self.dim)])
-=======
         if self.__dim != other.__dim:
             raise ValueError('Dimension mismatch')
         return Vec([self.__coor[i] + other.__coor[i] for i in range(self.__dim)])
->>>>>>> 012d05f (HW7: start ball)
 
     def __str__(self) -> str:
         return str(self.__coor)
@@ -63,26 +50,10 @@ class Vec:
         return self.__dim
 
     def norm(self) -> float:
-<<<<<<< HEAD
-        return sum([x**2 for x in self.coor])**0.5
-
-    def GCD(self, other: 'Vec') -> float:
-        delta_lon = abs(self[1] - other[1])
-        fg = sin(radians(self[0])) * sin(radians(other[0])) + cos(
-            radians(self[0])) * cos(radians(other[0])) * cos(radians(delta_lon))
-        fg = max(-1, fg)
-        fg = min(1, fg)
-        dd = acos(fg)
-        return dd
-
-
-class Data(Vec):
-=======
         return sum([x**2 for x in self.__coor])**0.5
 
 
 def GCD(first: Vec, second: Vec) -> float:
-    print(type(second))
     delta_lon = abs(first[1] - second[1])
     fg = sin(radians(first[0])) * sin(radians(second[0])) + cos(
         radians(first[0])) * cos(radians(second[0])) * cos(radians(delta_lon))
@@ -93,7 +64,6 @@ def GCD(first: Vec, second: Vec) -> float:
 
 
 class Data():
->>>>>>> 012d05f (HW7: start ball)
     def __init__(self, _data: list[float], otherinfo: dict[str] = None):
         self.info: dict[str] = otherinfo
         self.cluster: int = -1
@@ -133,27 +103,18 @@ def get_quake_data(year: int, range=2) -> list[Data]:
 
 
 def kmeans(datalist: list[Data], k: int, repeat: int) -> tuple[list[Data], list[Vec], bool]:
-<<<<<<< HEAD
-    dim = datalist[0].dim
-=======
     dim = datalist[0].coor.dim()
->>>>>>> 012d05f (HW7: start ball)
-    centroids: list[Vec] = sample(datalist, k)
+    centroidsD: list[Data] = sample(datalist, k)
+    centroids: list[Vec] = [c.coor for c in centroidsD]
     stable: bool = False
     for ii in range(repeat):
-        # print(f'Iteration {ii+1}')
         new_centroids: list[Vec] = [Vec([0 for _ in range(dim)])
-<<<<<<< HEAD
-                                      for _ in range(k)]
-=======
                                     for _ in range(k)]
->>>>>>> 012d05f (HW7: start ball)
         centroids_count: list[int] = [0 for _ in range(k)]
         for data in datalist:
-            print(type(centroids[0]))
             data.cluster = min(range(k),
                                key=lambda i: GCD(data.coor, centroids[i]))
-            new_centroids[data.cluster] += data
+            new_centroids[data.cluster] += data.coor
             centroids_count[data.cluster] += 1
         new_centroids = [new_centroids[i] / centroids_count[i] if centroids_count[i] != 0 else centroids[i]
                          for i in range(k)]
@@ -164,11 +125,11 @@ def kmeans(datalist: list[Data], k: int, repeat: int) -> tuple[list[Data], list[
     return datalist, centroids, stable
 
 
+def color(i: int) -> str:
+    colors = ['red', 'blue', 'green', 'yellow', 'purple',
+                'orange', 'brown', 'pink', 'gray', 'black']
+    return colors[i]
 def draw_map(data: list[Data], centroids: list[Vec]):
-    def color(i: int) -> str:
-        colors = ['red', 'blue', 'green', 'yellow', 'purple',
-                  'orange', 'brown', 'pink', 'gray', 'black']
-        return colors[i]
     t = turtle.Turtle()
     wn = turtle.Screen()
     wn.setup(1080, 544)
@@ -191,13 +152,26 @@ def transCoord(lat: float, lon: float) -> Vec:
     x = cos(radians(lat)) * cos(radians(lon))
     y = cos(radians(lat)) * sin(radians(lon))
     z = sin(radians(lat))
-    return Vec([x, y, z])
+    return Vec([x, y, z, 0])
 
-
+    
 def draw_3Dmap(data: list[Data], centroids: list[Vec]):
-    pass
     for d in data:
-        pass
+        d.coor = transCoord(d.coor[0], d.coor[1])
+    for c in centroids:
+        c = transCoord(c[0], c[1])
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    for d in data:
+        ax.scatter(d.coor[0], d.coor[1], d.coor[2], c=color(d.cluster))
+    #rotation animation
+    def update(num, data, ax):
+        ax.view_init(elev=10, azim=num)
+    ani = animation.FuncAnimation(fig, update, frames=range(0, 360, 2), fargs=(data, ax))
+    # plt.show()
+    print('Saving gif...')
+    ani.save('quakes.gif', writer='pillow', fps=30)
+    print('Gif saved')
 
 
 def main():
@@ -210,7 +184,7 @@ def main():
     filepath = raw.split()
     for filep in filepath:
         # data = readData(filep)
-        data = get_quake_data(2024, 10)
+        data = get_quake_data(2024, 2)
         data, centroids, isStable = kmeans(data, k, repeat)
         print('Stable' if isStable else 'Unstable')
         for i in range(k):
