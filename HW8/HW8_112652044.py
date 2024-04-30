@@ -6,6 +6,8 @@
 # Last Changed : 2024/4/26
 # Dependencies : Python 3.12.2,
 # Additional :
+#   1. The score of the decrypted message is calculated by the sum of the length of the words in the message.
+#   (use the number of words as the score may not be accurate)
 
 def createWordDict(filename: str) -> dict[str, bool]:
     wordDict = {}
@@ -42,8 +44,9 @@ def rail_Decrypt(cipher: str, obrit: int) -> str:
     return plain
 
 
-def burte_force(cipher: str, wordlist: dict[str, bool]) -> tuple[int, int]:
-    maxcount = -1
+def burte_force(cipher: str, wordlist: dict[str, bool]) -> tuple[int, int,int]:
+    maxscore = -1
+    maxmatchWordNum = -1
     argmaxOrbit = -1
     cipher = cipher.lower()
     for i in range(1, len(cipher)+1):
@@ -53,14 +56,26 @@ def burte_force(cipher: str, wordlist: dict[str, bool]) -> tuple[int, int]:
                 words = words.replace(c, ' ')
         words = words.split()
         score = 0
+        matchWordNum = 0
         for w in words:
             if wordlist.get(w, False):
                 score += len(w)
-        if score >= maxcount:
-            maxcount = score
+                matchWordNum += 1
+        if score >= maxscore:
+            maxscore = score
+            maxmatchWordNum = matchWordNum
             argmaxOrbit = i
-    return argmaxOrbit, maxcount
+        print(f"Rail: {i} \n+- Score: {score} \n+- Matched Words number: {matchWordNum}")
+        print("-"*50)
+    return argmaxOrbit, maxscore, maxmatchWordNum
 
+def readfile(filepath: str) -> str:
+    try:
+        with open(filepath, "r") as file:
+            return file.read()
+    except FileNotFoundError:
+        print("File not found")
+        exit(1)
 
 def main():
     wordlist = createWordDict("wordlist.txt")
@@ -69,8 +84,9 @@ def main():
     with open(filepath, "r") as file:
         plain = file.read()
     cipher = rail_Encrypt(plain, orbit)
-    orbit, count = burte_force(cipher, wordlist)
-    print("The orbit is %d, the scores is %d" % (orbit, count))
+    orbit, score, wordnum = burte_force(cipher, wordlist)
+    print("The best soulution is:")
+    print(f"Rail: {orbit} \n+- Score: {score} \n+- Matched Words number: {wordnum}")
     with open("cplain.txt", "w") as file:
         file.write(rail_Decrypt(cipher, orbit))
 
