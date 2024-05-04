@@ -3,12 +3,14 @@
 # Email Address : justin.sc12@nycu.edu.tw
 # HW Number : 7
 # Description : This program will process earthquake data and cluster the data using k-means algorithm.
-# Last Changed : 2024/4/25
-# Dependencies : Python 3.12.2, numpy, matplotlib
+# Last Changed : 2024/5/4
+# Dependencies : Python 3.12.2 
 # Additional :
 #   1. draw a map
 #   2. use GCD to calculate distance
 #   3. click to show the closest cluster and average magnitude
+#   4. load data from web
+
 
 from math import acos, sin, cos, radians
 from csv import reader
@@ -105,13 +107,16 @@ def get_quake_data(year: int, range=2) -> list[Data]:
             for row in datareader]
     return data
 
+
 def printCluster(data: list[Data], centroids: list[Vec]):
     for i in range(len(centroids)):
         print(f'Cluster {i+1}:')
-        print(f'+----Centroid: ({centroids[i][0]:6.2f}, {centroids[i][1]:6.2f})')
+        print(
+            f'+----Centroid: ({centroids[i][0]:6.2f}, {centroids[i][1]:6.2f})')
         for d in data:
             if d.cluster == i:
                 print(f'|    | ({d.coor[0]:6.2f}, {d.coor[1]:6.2f})')
+
 
 def kmeans(datalist: list[Data], k: int, repeat: int) -> tuple[list[Data], list[Vec], bool]:
     dim = datalist[0].coor.dim()
@@ -133,10 +138,10 @@ def kmeans(datalist: list[Data], k: int, repeat: int) -> tuple[list[Data], list[
             stable = True
             break
         centroids = new_centroids
-        #output the result
+        # output the result
         print("\033[33mIteration\033[0m", ii+1)
         printCluster(datalist, centroids)
-        
+
     return datalist, centroids, stable
 
 
@@ -164,44 +169,42 @@ def draw_map(data: list[Data], centroids: list[Vec]):
         t.dot(5, color(d.cluster))
         clusteravageMag[d.cluster] += float(d.info['mag'])
         clustersize[d.cluster] += 1
-    clusteravageMag = [clusteravageMag[i] / clustersize[i] if clustersize[i] != 0 else 0 
-                          for i in range(len(centroids))]
+    clusteravageMag = [clusteravageMag[i] / clustersize[i] if clustersize[i] != 0 else 0
+                       for i in range(len(centroids))]
     wn.update()
     p = Vec([0, 0])
+
     def click(x, y):
         nonlocal p
         p = Vec([y, x])
         print(f"Clicked at ({y:.2f}, {x:.2f})")
         wn.bye()
     wn.onclick(click)
-    wn.mainloop() 
+    wn.mainloop()
     c = min(range(len(centroids)), key=lambda i: GCD(p, centroids[i]))
     print(f"Closest cluster: {c+1}")
     print(f"Average magnitude: {clusteravageMag[c]:.2f}")
     turtle.TurtleScreen._RUNNING = True
 
 
-
 def main():
-    # filename = 'quakes_2023_6dot5.csv'
-    # k = 5
-    # repeat = 1000
+
     print("Click to show the closest cluster and average magnitude.")
-    k = int(input("Enter the number of clusters: "))
+    k = int(input("Enter the number of clusters(<10): "))
     repeat = int(input("Enter the number of iterations: "))
-    raw = input("Enter the data file name(Eenter '0' to load data from web): ")
+    raw = input(
+        "Enter the data file name,split with space(Eenter '0' to load data from web): ")
     filepath = raw.split()
     for filep in filepath:
         data = readData(filep) if filep != '0' else get_quake_data(2024, 10)
-        # data = get_quake_data(2024, 2)
         print(f"{"="*10} {filep} {"="*10}")
         data, centroids, isStable = kmeans(data, k, repeat)
         print("\033[32mFinal Result\033[0m")
-        print('Stable' if isStable else 'Unstable')
+        print("\033[96m"+('Stable' if isStable else 'Unstable')+"\033[0m")
         printCluster(data, centroids)
+        print(f"{"="*10} {filep} {"="*10}")
         draw_map(data, centroids)
-
-
+        input("\033[37mPress Enter to continue...\033[0m")
 
 
 if __name__ == "__main__":

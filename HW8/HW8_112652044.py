@@ -85,10 +85,12 @@ def main():
         plain = file.read()
     cipher = rail_Encrypt(plain, orbit)
     orbit, score, wordnum = burte_force(cipher, wordlist)
+    print(rail_Decrypt(cipher, orbit))
     print("The best soulution is:")
     print(f"Rail: {orbit} \n+- Score: {score} \n+- Matched Words number: {wordnum}")
     with open("cplain.txt", "w") as file:
         file.write(rail_Decrypt(cipher, orbit))
+    print("The decrypted message has been written to cplain.txt")
 
 
 if __name__ == "__main__":
