@@ -91,7 +91,8 @@ def main():
     with open("cplain.txt", "w") as file:
         file.write(rail_Decrypt(cipher, orbit))
     print("The decrypted message has been written to cplain.txt")
-
+    print("The decrypted message is:")
+    print(rail_Decrypt(cipher, orbit))
 
 if __name__ == "__main__":
     main()
