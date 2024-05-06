@@ -278,14 +278,13 @@ def readfile(filepath: str) -> str:
 
 def main():
     wordlist = createWordDict("wordlist.txt")
-    print(wordlist.get("lc",0))
+    # print(wordlist.get("lc",0))
     filepath = input("Please enter the file path: ")
     orbit = int(input("Please enter the number rails: "))
     with open(filepath, "r") as file:
         plain = file.read()
     cipher = rail_Encrypt(plain, orbit)
     orbit, score, wordnum = burte_force(cipher, wordlist)
-    print(rail_Decrypt(cipher, orbit))
     print("The best soulution is:")
     print(
         f"Rail: {orbit} \n+- Score: {score} \n+- Matched Words number: {wordnum}")

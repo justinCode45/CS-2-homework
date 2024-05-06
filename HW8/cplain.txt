@@ -1,4 +1,4 @@
- Aie, a young girl, sits bored by a riverbank and spots a White Rabbit with a pocket watch and waistcoat lamenting that he is late. 
+  Alice, a young girl, sits bored by a riverbank and spots a White Rabbit with a pocket watch and waistcoat lamenting that he is late. 
 Surprised, Alice follows him down a rabbit hole, which sends her into a lengthy plummet but to a safe landing. 
 Inside a room with a table, she finds a key to a tiny door, beyond which is a garden. 
 While pondering how to fit through the door, she discovers a bottle labelled "Drink me". 
@@ -26,4 +26,3 @@ Alice finds the Hatter, March Hare, and a sleepy Dormouse in the midst of a tea 
 The Hatter explains that it is always 6 pm (tea time), claiming that time is standing still as punishment for the Hatter trying to "kill it". 
 A conversation ensues around the table, and the riddle "Why is a raven like a writing desk?" is brought up. 
 Alice impatiently decides to leave, calling the party stupid.
- lc
