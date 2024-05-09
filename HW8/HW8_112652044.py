@@ -219,23 +219,24 @@ def rail_Encrypt(plain: str, obrit: int) -> str:
     return ''.join(cipher)
 
 
-def rail_Decrypt(cipher: str, obrit: int) -> str:
+def rail_Decrypt(cipher: str, rails: int) -> str:
     plain = ""
-    if obrit == 0:
+    if rails == 0:
         return cipher
-    length = len(cipher) // obrit
-    if len(cipher) % obrit != 0:
+    length = len(cipher) // rails
+    if len(cipher) % rails != 0:
         length += 1
-    space = obrit * length - len(cipher)
+    space:int = rails * length - len(cipher)
     for i in range(length-1):
         drow = 0
-        for j in range(obrit):
+        for j in range(rails):
             if i + drow < len(cipher):
                 plain += cipher[i + drow]
-            drow += length if j < obrit - space else length - 1
-    for j in range(obrit):
-        if j < obrit - space:
+            drow += length if j < rails - space else length - 1
+    for j in range(rails):
+        if j < rails - space:
             plain += cipher[length-1+length * j]
+            break
 
     return plain
 
@@ -245,7 +246,7 @@ def burte_force(cipher: str, wordlist: dict[str, bool]) -> tuple[int, int, int]:
     maxmatchWordNum = -1
     argmaxOrbit = -1
     cipher = cipher.lower()
-    for i in range(len(cipher)+1):
+    for i in range(1,len(cipher)+1):
         words = rail_Decrypt(cipher, i)
         for c in words:
             if not c.isalpha():
