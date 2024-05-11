@@ -9,15 +9,15 @@
 #   1. SVD compress function is implemented.
 #   2. flipX and flipY function is implemented.
 #   3. faster
-import turtle
+
 import time
 import tkinter as tk
 from threading import Thread
 from turtle import RawTurtle
 from tkinter import Canvas, Button
 
-WIDTH = 900
-HEIGHT = 900
+WIDTH = 512
+HEIGHT = 512
 
 
 class LSystem:
@@ -36,6 +36,12 @@ class LSystem:
         for _ in range(depth):
             inst = ''.join([self.rules.get(c, c) for c in inst])
         for c in inst:
+            if c == 'T':
+                length *= self.dim
+                continue
+            elif c == 't':
+                length /= self.dim
+                continue
             yield (c, length, self.angle)
 
 
@@ -91,7 +97,7 @@ def draw_LS(canvas: Canvas, system: LSystem, depth: int, initState: tuple[tuple,
     t.getscreen().update()
 
 
-def animate_LS(fram: LSCanvasBuffer, depth: int, delay=0.5):
+def animate_LS(fram: LSCanvasBuffer, depth: int, delay=0.3):
     for i in range(depth+1):
         c = fram[i]
         c.pack()
@@ -103,6 +109,9 @@ def animate_LS(fram: LSCanvasBuffer, depth: int, delay=0.5):
 
 def load_LS(path: str):
     with open(path, 'r') as f:
+        init_state = f.readline().split()
+        init_state = ((float(init_state[0]), float(
+            init_state[1])), float(init_state[2]))
         angle = float(f.readline())
         size = float(f.readline())
         dim = float(f.readline())
@@ -111,7 +120,7 @@ def load_LS(path: str):
         for line in f:
             key, value = line.split()
             rules[key] = value
-        return LSystem(angle, size, dim, axiom, rules)
+        return LSystem(angle, size, dim, axiom, rules), init_state
 
 
 class App:
@@ -119,35 +128,94 @@ class App:
     def __init__(self) -> None:
         self.root = tk.Tk()
         self.root.title("LSystem")
-        self.root.geometry(f"{WIDTH+100}x{HEIGHT}")
-        # self.btn_ = 
-        
-    def click(self,event):
-        pass
+        self.root.geometry(f"{WIDTH+200}x{HEIGHT}")
 
+        self.btn_show: Button = Button(
+            self.root, text="Show", command=self.show)
+        self.pattern: list[str] = ["cantor_set",
+                                   "koch_curve", "rosemary", "levy_curve"]
+        self.value_mode: tk.IntVar = tk.IntVar()
+        self.value_pattern: tk.StringVar = tk.StringVar()
+        self.menu: tk.OptionMenu = tk.OptionMenu(
+            self.root, self.value_pattern, *self.pattern)
+
+        self.rbtn1: tk.Radiobutton = tk.Radiobutton(
+            self.root, text="Draw", variable=self.value_mode, value=0)
+        self.rbtn2: tk.Radiobutton = tk.Radiobutton(
+            self.root, text="Animate", variable=self.value_mode, value=1)
+
+        self.value_depth: tk.IntVar = tk.IntVar()
+        self.spin_depth: tk.Spinbox = tk.Spinbox(
+            self.root, from_=0, to=50, textvariable=self.value_depth)
+
+        self.value_pattern.set(self.pattern[0])
+        self.rbtn1.select()
+        self.value_depth.set(0)
+        self.pic_fram: tk.Frame = tk.Frame(
+            self.root, width=WIDTH, height=HEIGHT)
+        self.pic_fram.pack_propagate(False)
+
+        self.pic_fram.grid(row=0, column=0, rowspan=4)
+        self.btn_show.grid(row=3, column=2, columnspan=2)
+        self.menu.grid(row=0, column=2, columnspan=2)
+        self.rbtn1.grid(row=1, column=2)
+        self.rbtn2.grid(row=1, column=3)
+        self.spin_depth.grid(row=2, column=2, columnspan=2)
+
+        self.LSDict: dict[str, LSCanvasBuffer] = {}
+
+        for path in self.pattern:
+            system, initState = load_LS(path+".txt")
+            self.LSDict[path] = LSCanvasBuffer(
+                self.pic_fram, system, initState)
+
+    def show(self):
+        rending_lable = tk.Label(self.pic_fram, text="Rending...\nIf it takes too long, please CTRL+C.")
+        for c in self.pic_fram.winfo_children():
+            c.pack_forget()
+        pattern = self.value_pattern.get()
+        depth = self.value_depth.get()
+        mode = self.value_mode.get()
+        if mode == 0:
+            rending_lable.pack(expand=True, fill="none")
+            c = self.LSDict[pattern][depth]
+            rending_lable.pack_forget()
+            c.pack()
+        else:
+            lsbuffer = self.LSDict[pattern]
+            rending_lable.pack(expand=True, fill="none")
+            lsbuffer.generate(depth)
+            rending_lable.pack_forget()
+            animate_LS(lsbuffer, depth)
+            lsbuffer[depth].pack()
 
     def run(self):
         self.root.mainloop()
 
-    
 
-def main():
-    cantor_set = LSystem(0, 500, 3,
-                         '[F]',
+def test():
+    cantor_set = LSystem(90, 450, 3,
+                         '[F]X',
                          {'F': 'FMF',
-                          'M': 'MMM'})
-    koch_curve = LSystem(60, 500, 3,
+                          'M': 'MMM',
+                          'X': '-ttMTT+T[F]X'})
+    koch_curve = LSystem(60, 250, 3,
                          '[F++F++F]',
                          {'F': 'F-F++F-F'})
-    rosemary = LSystem(25.7, 350, 2,
+    rosemary = LSystem(25.7, 175, 2,
                        '[H]',
                        {'H': 'HFX[+H][-H]',
                         'X': 'X[-FFF][+FFF]FX'})
     levy_curve = load_LS("levy_curve.txt")
     root = tk.Tk()
-    levyCurve_buffer = LSCanvasBuffer(root, levy_curve, ((-100, -100), 0))
-    levyCurve_buffer.generate(16)
-    animate_LS(levyCurve_buffer, 16)
+    cantor_buffer = LSCanvasBuffer(root, cantor_set, ((-225, -64), 0))
+    cantor_buffer.generate(5)
+    # while 1:
+    #     animate_LS(cantor_buffer, 10, 0.5)
+    cantor_buffer[5].pack()
+    # levyCurve_buffer = LSCanvasBuffer(root, levy_curve, ((-100, -100), 0))
+    # levyCurve_buffer.generate(16)
+    # animate_LS(levyCurve_buffer, 16)
     # levyCurve_buffer[10].pack()
     # rosemary_buffer = LSCanvasBuffer(root, rosemary, ((-300, 0), 0))
     # rosemary_buffer.generate(8)
@@ -155,9 +223,11 @@ def main():
     #     animate_LS(rosemary_buffer, 8, 0.5)
 
     # rosemary_buffer[8].pack()
-    levyCurve_buffer[16].pack()
+    # levyCurve_buffer[16].pack()
     root.mainloop()
 
 
 if __name__ == "__main__":
-    main()
+    # main()
+    a = App()
+    a.run()

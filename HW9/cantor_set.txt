@@ -1,0 +1,8 @@
+-225 -64 0
+90
+450
+3
+[F]X
+F FMF
+M MMM
+X -ttMTT+T[F]X
