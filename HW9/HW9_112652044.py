@@ -4,17 +4,20 @@
 # HW Number : 9
 # Description : This program will process image and compress the image using SVD.
 # Last Changed : 2024/4/21
-# Dependencies : Python 3.12.2, numpy
+# Dependencies : Python 3.12.2, tkinter, turtle, PIL, ghostscript
 # Additional :
-#   1. SVD compress function is implemented.
-#   2. flipX and flipY function is implemented.
-#   3. faster
+#   1. beautiful GUI
+#   2. save the image as .png or .gif
+#   3. support multiple LSystem pattern
+#   4. support both draw and animate mode
+# Please install ghostscript and PIL in order to save image
 
 import time
 import tkinter as tk
-from threading import Thread
 from turtle import RawTurtle
 from tkinter import Canvas, Button
+from PIL import Image
+import io
 
 WIDTH = 512
 HEIGHT = 512
@@ -53,7 +56,7 @@ class LSCanvasBuffer:
         self.initState: tuple = initState
         self.buffer: dict[int, Canvas] = {}
 
-    def __getitem__(self, key: int):
+    def __getitem__(self, key: int) -> Canvas:
         if key not in self.buffer:
             c = Canvas(self.root, width=WIDTH, height=HEIGHT)
             draw_LS(c, self.system, key, self.initState)
@@ -132,6 +135,8 @@ class App:
 
         self.btn_show: Button = Button(
             self.root, text="Show", command=self.show)
+        self.btn_save: Button = Button(
+            self.root, text="Save", command=self.save)
         self.pattern: list[str] = ["cantor_set",
                                    "koch_curve", "rosemary", "levy_curve"]
         self.value_mode: tk.IntVar = tk.IntVar()
@@ -156,7 +161,8 @@ class App:
         self.pic_fram.pack_propagate(False)
 
         self.pic_fram.grid(row=0, column=0, rowspan=4)
-        self.btn_show.grid(row=3, column=2, columnspan=2)
+        self.btn_show.grid(row=3, column=2)
+        self.btn_save.grid(row=3, column=3)
         self.menu.grid(row=0, column=2, columnspan=2)
         self.rbtn1.grid(row=1, column=2)
         self.rbtn2.grid(row=1, column=3)
@@ -170,7 +176,8 @@ class App:
                 self.pic_fram, system, initState)
 
     def show(self):
-        rending_lable = tk.Label(self.pic_fram, text="Rending...\nIf it takes too long, please CTRL+C.")
+        rending_lable = tk.Label(
+            self.pic_fram, text="Rending...\nIf it takes too long, please CTRL+C.")
         for c in self.pic_fram.winfo_children():
             c.pack_forget()
         pattern = self.value_pattern.get()
@@ -188,6 +195,28 @@ class App:
             rending_lable.pack_forget()
             animate_LS(lsbuffer, depth)
             lsbuffer[depth].pack()
+
+    def save(self):
+        self.show()
+        pattern = self.value_pattern.get()
+        depth = self.value_depth.get()
+        if self.value_mode.get() == 0:
+            ps = self.LSDict[pattern][depth]
+            ps.update()
+            ps = ps.postscript()
+            image = Image.open(io.BytesIO(ps.encode('utf-8')))
+            image.save(f"{pattern}_{depth}.png")
+            image.save(f"{pattern}_{depth}.png")
+        else:
+            l = []
+            for i in range(depth+1):
+                ps = self.LSDict[pattern][i]
+                ps.update()
+                ps = ps.postscript()
+                image = Image.open(io.BytesIO(ps.encode('utf-8')))
+                l.append(image)
+            image.save(f"{pattern}_{i}.gif", save_all=True,
+                       append_images=l[1:], duration=100, loop=0)
 
     def run(self):
         self.root.mainloop()
