@@ -38,6 +38,7 @@ class LSystem:
         # length =self.size
         for _ in range(depth):
             inst = ''.join([self.rules.get(c, c) for c in inst])
+        inst.replace('_', '')
         for c in inst:
             if c == 'T':
                 length *= self.dim
@@ -137,7 +138,7 @@ class App:
             self.root, text="Show", command=self.show)
         self.btn_save: Button = Button(
             self.root, text="Save", command=self.save)
-        self.pattern: list[str] = ["cantor_set",
+        self.pattern: list[str] = ["cantor_set","penrose",
                                    "koch_curve", "rosemary", "levy_curve"]
         self.value_mode: tk.IntVar = tk.IntVar()
         self.value_pattern: tk.StringVar = tk.StringVar()
@@ -169,11 +170,13 @@ class App:
         self.spin_depth.grid(row=2, column=2, columnspan=2)
 
         self.LSDict: dict[str, LSCanvasBuffer] = {}
-
-        for path in self.pattern:
-            system, initState = load_LS(path+".txt")
-            self.LSDict[path] = LSCanvasBuffer(
-                self.pic_fram, system, initState)
+        try:
+            for path in self.pattern:
+                system, initState = load_LS(path+".txt")
+                self.LSDict[path] = LSCanvasBuffer(
+                    self.pic_fram, system, initState)
+        except FileNotFoundError:
+            print("Please make sure the file exists.")
 
     def show(self):
         rending_lable = tk.Label(
@@ -205,7 +208,6 @@ class App:
             ps.update()
             ps = ps.postscript()
             image = Image.open(io.BytesIO(ps.encode('utf-8')))
-            image.save(f"{pattern}_{depth}.png")
             image.save(f"{pattern}_{depth}.png")
         else:
             l = []

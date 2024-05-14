@@ -1,0 +1,10 @@
+0 0 0
+36
+50
+1.3
+[X]--[X]--[X]--[X]--[X]
+W YF--ZF++++XF[+YF++++WF]--
+X -YF++ZF[+++WF++XF]-
+Y +WF--XF[---YF--ZF]+
+Z ++YF----WF[-ZF----XF]++XF
+F _ 
