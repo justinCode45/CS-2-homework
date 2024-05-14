@@ -7,7 +7,7 @@
 # Dependencies : Python 3.12.2, tkinter, turtle, PIL, ghostscript
 # Additional :
 #   1. beautiful GUI
-#   2. save the image as .png or .gif
+#   2. save the image as .png or .gif(needs ghostscript)
 #   3. support multiple LSystem pattern
 #   4. support both draw and animate mode
 # Please install ghostscript and PIL in order to save image
@@ -15,7 +15,7 @@
 import time
 import tkinter as tk
 from turtle import RawTurtle
-from tkinter import Canvas, Button
+from tkinter import Canvas, Button, messagebox
 from PIL import Image
 import io
 
@@ -203,23 +203,27 @@ class App:
         self.show()
         pattern = self.value_pattern.get()
         depth = self.value_depth.get()
-        if self.value_mode.get() == 0:
-            ps = self.LSDict[pattern][depth]
-            ps.update()
-            ps = ps.postscript()
-            image = Image.open(io.BytesIO(ps.encode('utf-8')))
-            image.save(f"{pattern}_{depth}.png")
-        else:
-            l = []
-            for i in range(depth+1):
-                ps = self.LSDict[pattern][i]
+        try:
+            if self.value_mode.get() == 0:
+                ps = self.LSDict[pattern][depth]
                 ps.update()
                 ps = ps.postscript()
                 image = Image.open(io.BytesIO(ps.encode('utf-8')))
-                l.append(image)
-            image.save(f"{pattern}_{i}.gif", save_all=True,
-                       append_images=l[1:], duration=100, loop=0)
-
+                image.save(f"{pattern}_{depth}.png")
+            else:
+                l = []
+                for i in range(depth+1):
+                    ps = self.LSDict[pattern][i]
+                    ps.update()
+                    ps = ps.postscript()
+                    image = Image.open(io.BytesIO(ps.encode('utf-8')))
+                    l.append(image)
+                image.save(f"{pattern}_{i}.gif", save_all=True,
+                        append_images=l[1:], duration=100, loop=0)
+        except:
+            print("Please install ghostscript and PIL in order to save image")
+            messagebox.showerror(
+                "Error", "Please install ghostscript and PIL in order to save image")
     def run(self):
         self.root.mainloop()
 
