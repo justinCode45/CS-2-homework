@@ -4,7 +4,10 @@
         "./HW1",
         "./HW2",
         "./package",
-        "./onC/4"
+        "./onC/4",
+        "./onC/4",
+        "./onC/4",
+        "./onC/5"
     ],
     "remote.autoForwardPortsFallback": 0
 }
