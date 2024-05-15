@@ -17,10 +17,13 @@ import tkinter as tk
 from turtle import RawTurtle
 from tkinter import Canvas, Button, messagebox
 from PIL import Image
+import random
 import io
 
-WIDTH = 512
-HEIGHT = 512
+WIDTH = 800
+HEIGHT = 800
+
+PATTERN = ["cantor_set", "koch_curve", "rosemary", "levy_curve", "ring"]
 
 
 class LSystem:
@@ -35,10 +38,10 @@ class LSystem:
     def instructions(self, depth: int):
         inst = self.axiom
         length = self.size/(self.dim**depth)
-        # length =self.size
         for _ in range(depth):
+
             inst = ''.join([self.rules.get(c, c) for c in inst])
-        inst.replace('_', '')
+
         for c in inst:
             if c == 'T':
                 length *= self.dim
@@ -76,6 +79,7 @@ def draw_LS(canvas: Canvas, system: LSystem, depth: int, initState: tuple[tuple,
     t = RawTurtle(canvas)
     t.getscreen().tracer(0)
     t.hideturtle()
+    t.pensize(2)
     t.setheading(initState[1])
     t.teleport(initState[0][0], initState[0][1])
     for instr in system.instructions(depth):
@@ -112,18 +116,19 @@ def animate_LS(fram: LSCanvasBuffer, depth: int, delay=0.3):
 
 
 def load_LS(path: str):
+    scaler = HEIGHT/512
     with open(path, 'r') as f:
         init_state = f.readline().split()
-        init_state = ((float(init_state[0]), float(
-            init_state[1])), float(init_state[2]))
+        init_state = ((float(init_state[0])*scaler,
+                       float(init_state[1])*scaler), float(init_state[2]))
         angle = float(f.readline())
-        size = float(f.readline())
+        size = float(f.readline())*scaler
         dim = float(f.readline())
         axiom = f.readline()[:-1]
         rules = {}
         for line in f:
             key, value = line.split()
-            rules[key] = value
+            rules[key] = value if value != '_' else ''
         return LSystem(angle, size, dim, axiom, rules), init_state
 
 
@@ -138,8 +143,7 @@ class App:
             self.root, text="Show", command=self.show)
         self.btn_save: Button = Button(
             self.root, text="Save", command=self.save)
-        self.pattern: list[str] = ["cantor_set","penrose",
-                                   "koch_curve", "rosemary", "levy_curve"]
+        self.pattern: list[str] = PATTERN
         self.value_mode: tk.IntVar = tk.IntVar()
         self.value_pattern: tk.StringVar = tk.StringVar()
         self.menu: tk.OptionMenu = tk.OptionMenu(
@@ -170,13 +174,16 @@ class App:
         self.spin_depth.grid(row=2, column=2, columnspan=2)
 
         self.LSDict: dict[str, LSCanvasBuffer] = {}
-        try:
-            for path in self.pattern:
+
+        for path in self.pattern:
+            try:
                 system, initState = load_LS(path+".txt")
                 self.LSDict[path] = LSCanvasBuffer(
                     self.pic_fram, system, initState)
-        except FileNotFoundError:
-            print("Please make sure the file exists.")
+            except FileNotFoundError:
+                print(f"Please make sure the file {path}.txt exists.")
+                self.pattern.remove(path)
+                continue
 
     def show(self):
         rending_lable = tk.Label(
@@ -203,8 +210,9 @@ class App:
         self.show()
         pattern = self.value_pattern.get()
         depth = self.value_depth.get()
+        mode = self.value_mode.get()
         try:
-            if self.value_mode.get() == 0:
+            if mode == 0:
                 ps = self.LSDict[pattern][depth]
                 ps.update()
                 ps = ps.postscript()
@@ -219,11 +227,14 @@ class App:
                     image = Image.open(io.BytesIO(ps.encode('utf-8')))
                     l.append(image)
                 image.save(f"{pattern}_{i}.gif", save_all=True,
-                        append_images=l[1:], duration=100, loop=0)
+                           append_images=l[1:], duration=len(l)*20, loop=0)
         except:
             print("Please install ghostscript and PIL in order to save image")
             messagebox.showerror(
                 "Error", "Please install ghostscript and PIL in order to save image")
+        messagebox.showinfo("Save", f"Save as {pattern}_{
+                            depth}.{"gif" if mode else "png"} ")
+
     def run(self):
         self.root.mainloop()
 
