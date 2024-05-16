@@ -179,11 +179,8 @@ class App:
             self.root, width=WIDTH, height=HEIGHT)
         self.pic_fram.pack_propagate(False)
 
-        img = surprise.decrypt("surprise.mygo")
-        img = Image.open(io.BytesIO(img))
-        img.thumbnail((WIDTH, HEIGHT))
-        self.img = ImageTk.PhotoImage(img)
-        self.surprise = tk.Label(self.pic_fram, image=self.img)
+        #surprise
+        surprise.surprise(self, WIDTH, HEIGHT)
 
         self.pic_fram.grid(row=0, column=0, rowspan=4)
         self.btn_show.grid(row=3, column=2)
