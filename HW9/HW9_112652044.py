@@ -13,7 +13,7 @@
 #   5. support error handling
 #   6. support timeout handling
 #   7. read L-System from file
-#   8. SURPRISE!!!!!!!!!!!!!!!!!!!!!!!!!!
+#   8. SURPRISE!!!!!!!!!!!!!!!!!!!!!!!!!!(it is safe)
 # Please install ghostscript and PIL in order to save image
 
 import time
@@ -23,6 +23,7 @@ from tkinter import Canvas, Button, messagebox
 from PIL import Image, ImageTk
 import signal
 import traceback
+import surprise
 import io
 # you can change the following parameters
 WIDTH = 800
@@ -34,8 +35,8 @@ PATTERN = ["cantor_set", "koch_curve",
 
 
 class LSystem:
-# LSystem is a class for L-System, it will store the axiom, rules, angle, size, and dim
-# use instructions to generate the instruction for turtle
+    # LSystem is a class for L-System, it will store the axiom, rules, angle, size, and dim
+    # use instructions to generate the instruction for turtle
     def __init__(self, angle: float, size: float, dim: float, axiom: str, rules: dict[str, str]):
         self.axiom: str = axiom
         self.rules: dict[str, str] = rules
@@ -61,7 +62,7 @@ class LSystem:
 
 
 class LSCanvasBuffer:
-# LSCanvasBuffer is a buffer for LSystem, it will store the canvas for each depth
+    # LSCanvasBuffer is a buffer for LSystem, it will store the canvas for each depth
     def __init__(self, root: tk.Tk, system: LSystem, initState: tuple[tuple, int] = ((0, 0), 0)):
         self.root: tk.Tk = root
         self.system: LSystem = system
@@ -83,7 +84,7 @@ class LSCanvasBuffer:
 
 
 def draw_LS(canvas: Canvas, system: LSystem, depth: int, initState: tuple[tuple, int] = ((0, 0), 0)):
-# draw_LS will draw the L-System pattern on the canvas
+    # draw_LS will draw the L-System pattern on the canvas
     state = []
     t = RawTurtle(canvas)
     t.getscreen().tracer(0)
@@ -117,7 +118,7 @@ def draw_LS(canvas: Canvas, system: LSystem, depth: int, initState: tuple[tuple,
 
 
 def animate_LS(fram: LSCanvasBuffer, depth: int, delay=0.3):
-# animate_LS will animate the L-System pattern on the canvas
+    # animate_LS will animate the L-System pattern on the canvas
     for i in range(depth+1):
         c = fram[i]
         c.pack()
@@ -128,7 +129,7 @@ def animate_LS(fram: LSCanvasBuffer, depth: int, delay=0.3):
 
 
 def load_LS(path: str):
-# load_LS will load the L-System from the file
+    # load_LS will load the L-System from the file
     scaler = HEIGHT/512
     with open(path, 'r') as f:
         init_state = f.readline().split()
@@ -178,7 +179,8 @@ class App:
             self.root, width=WIDTH, height=HEIGHT)
         self.pic_fram.pack_propagate(False)
 
-        img = Image.open("surprise.mygo")
+        img = surprise.decrypt("surprise.mygo")
+        img = Image.open(io.BytesIO(img))
         img.thumbnail((WIDTH, HEIGHT))
         self.img = ImageTk.PhotoImage(img)
         self.surprise = tk.Label(self.pic_fram, image=self.img)
