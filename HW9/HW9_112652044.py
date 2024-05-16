@@ -2,32 +2,40 @@
 # Author : Justin Chen
 # Email Address : justin.sc12@nycu.edu.tw
 # HW Number : 9
-# Description : This program will process image and compress the image using SVD.
-# Last Changed : 2024/5/12
+# Description : Show fractal pattern by LSystem, and save the image as .png or .gif
+# Last Changed : 2024/5/16
 # Dependencies : Python 3.12.2, tkinter, turtle, PIL, ghostscript
 # Additional :
 #   1. beautiful GUI
 #   2. save the image as .png or .gif(needs ghostscript)
-#   3. support multiple LSystem pattern
+#   3. support multiple L-System pattern
 #   4. support both draw and animate mode
+#   5. support error handling
+#   6. support timeout handling
+#   7. read L-System from file
+#   8. SURPRISE!!!!!!!!!!!!!!!!!!!!!!!!!!
 # Please install ghostscript and PIL in order to save image
 
 import time
 import tkinter as tk
 from turtle import RawTurtle
 from tkinter import Canvas, Button, messagebox
-from PIL import Image
-import random
+from PIL import Image, ImageTk
+import signal
+import traceback
 import io
-
+# you can change the following parameters
 WIDTH = 800
 HEIGHT = 800
-
-PATTERN = ["cantor_set", "koch_curve", "rosemary", "levy_curve", "ring"]
+# TIMEOUTTIME is the time limit for each show
+TIMEOUTTIME = 9
+PATTERN = ["cantor_set", "koch_curve",
+           "rosemary", "levy_curve", "ring", "crystal"]
 
 
 class LSystem:
-
+# LSystem is a class for L-System, it will store the axiom, rules, angle, size, and dim
+# use instructions to generate the instruction for turtle
     def __init__(self, angle: float, size: float, dim: float, axiom: str, rules: dict[str, str]):
         self.axiom: str = axiom
         self.rules: dict[str, str] = rules
@@ -53,7 +61,7 @@ class LSystem:
 
 
 class LSCanvasBuffer:
-
+# LSCanvasBuffer is a buffer for LSystem, it will store the canvas for each depth
     def __init__(self, root: tk.Tk, system: LSystem, initState: tuple[tuple, int] = ((0, 0), 0)):
         self.root: tk.Tk = root
         self.system: LSystem = system
@@ -75,13 +83,16 @@ class LSCanvasBuffer:
 
 
 def draw_LS(canvas: Canvas, system: LSystem, depth: int, initState: tuple[tuple, int] = ((0, 0), 0)):
+# draw_LS will draw the L-System pattern on the canvas
     state = []
     t = RawTurtle(canvas)
     t.getscreen().tracer(0)
     t.hideturtle()
     t.pensize(2)
     t.setheading(initState[1])
-    t.teleport(initState[0][0], initState[0][1])
+    t.up()
+    t.goto(initState[0])
+    t.down()
     for instr in system.instructions(depth):
         c, l, a = instr
         if c == 'F':
@@ -106,6 +117,7 @@ def draw_LS(canvas: Canvas, system: LSystem, depth: int, initState: tuple[tuple,
 
 
 def animate_LS(fram: LSCanvasBuffer, depth: int, delay=0.3):
+# animate_LS will animate the L-System pattern on the canvas
     for i in range(depth+1):
         c = fram[i]
         c.pack()
@@ -116,6 +128,7 @@ def animate_LS(fram: LSCanvasBuffer, depth: int, delay=0.3):
 
 
 def load_LS(path: str):
+# load_LS will load the L-System from the file
     scaler = HEIGHT/512
     with open(path, 'r') as f:
         init_state = f.readline().split()
@@ -140,7 +153,7 @@ class App:
         self.root.geometry(f"{WIDTH+200}x{HEIGHT}")
 
         self.btn_show: Button = Button(
-            self.root, text="Show", command=self.show)
+            self.root, text="Show", command=self.timeout_show)
         self.btn_save: Button = Button(
             self.root, text="Save", command=self.save)
         self.pattern: list[str] = PATTERN
@@ -165,6 +178,11 @@ class App:
             self.root, width=WIDTH, height=HEIGHT)
         self.pic_fram.pack_propagate(False)
 
+        img = Image.open("surprise.mygo")
+        img.thumbnail((WIDTH, HEIGHT))
+        self.img = ImageTk.PhotoImage(img)
+        self.surprise = tk.Label(self.pic_fram, image=self.img)
+
         self.pic_fram.grid(row=0, column=0, rowspan=4)
         self.btn_show.grid(row=3, column=2)
         self.btn_save.grid(row=3, column=3)
@@ -174,40 +192,58 @@ class App:
         self.spin_depth.grid(row=2, column=2, columnspan=2)
 
         self.LSDict: dict[str, LSCanvasBuffer] = {}
-
-        for path in self.pattern:
-            try:
-                system, initState = load_LS(path+".txt")
-                self.LSDict[path] = LSCanvasBuffer(
-                    self.pic_fram, system, initState)
-            except FileNotFoundError:
-                print(f"Please make sure the file {path}.txt exists.")
-                self.pattern.remove(path)
-                continue
+        tk.Tk.report_callback_exception = self.show_error
 
     def show(self):
-        rending_lable = tk.Label(
-            self.pic_fram, text="Rending...\nIf it takes too long, please CTRL+C.")
         for c in self.pic_fram.winfo_children():
             c.pack_forget()
         pattern = self.value_pattern.get()
         depth = self.value_depth.get()
         mode = self.value_mode.get()
         if mode == 0:
-            rending_lable.pack(expand=True, fill="none")
             c = self.LSDict[pattern][depth]
-            rending_lable.pack_forget()
             c.pack()
         else:
             lsbuffer = self.LSDict[pattern]
-            rending_lable.pack(expand=True, fill="none")
-            lsbuffer.generate(depth)
-            rending_lable.pack_forget()
             animate_LS(lsbuffer, depth)
             lsbuffer[depth].pack()
 
-    def save(self):
+    def rendering(self):
+        rendering_lable = tk.Label(
+            self.pic_fram, text="Rendering...\nIf it takes too long, please CTRL+C in terminal.")
+        for c in self.pic_fram.winfo_children():
+            c.pack_forget()
+        rendering_lable.pack(expand=True, fill="none")
+        pattern = self.value_pattern.get()
+        depth = self.value_depth.get()
+        mode = self.value_mode.get()
+        if mode == 0:
+            c = self.LSDict[pattern][depth]
+            rendering_lable.pack_forget()
+        else:
+            lsbuffer = self.LSDict[pattern]
+            lsbuffer.generate(depth)
+            rendering_lable.pack_forget()
+
+    def heandler(self, *args):
+        for c in self.pic_fram.winfo_children():
+            c.pack_forget()
+        self.surprise.pack(fill="none", expand=True)
+        raise Exception("Timeout")
+
+    def timeout_show(self):
+        signal.signal(signal.SIGALRM, self.heandler)
+        signal.alarm(TIMEOUTTIME)
+        self.rendering()
+        signal.alarm(0)
         self.show()
+
+    def show_error(self, *args):
+        err = traceback.format_exception(*args)
+        messagebox.showerror("Error", err[-1])
+
+    def save(self):
+        self.timeout_show()
         pattern = self.value_pattern.get()
         depth = self.value_depth.get()
         mode = self.value_mode.get()
@@ -227,50 +263,29 @@ class App:
                     image = Image.open(io.BytesIO(ps.encode('utf-8')))
                     l.append(image)
                 image.save(f"{pattern}_{i}.gif", save_all=True,
-                           append_images=l[1:], duration=len(l)*20, loop=0)
+                           append_images=l[1:], duration=len(l)*15, loop=0)
         except:
             print("Please install ghostscript and PIL in order to save image")
-            messagebox.showerror(
-                "Error", "Please install ghostscript and PIL in order to save image")
-        messagebox.showinfo("Save", f"Save as {pattern}_{
-                            depth}.{"gif" if mode else "png"} ")
+            raise Exception(
+                "Please install ghostscript and PIL in order to save image")
+        extfilename = "gif" if mode else "png"
+        messagebox.showinfo("Save",
+                            f"Save as {pattern}_{depth}.{extfilename} ")
+
+    def preprocess(self):
+        for path in self.pattern:
+            try:
+                system, initState = load_LS(path+".txt")
+                self.LSDict[path] = LSCanvasBuffer(
+                    self.pic_fram, system, initState)
+            except:
+                self.pattern.remove(path)
+                print(f"File {path}.txt not found")
+                raise Exception(f"File {path}.txt not found")
 
     def run(self):
+        self.root.after(0, self.preprocess)
         self.root.mainloop()
-
-
-def test():
-    cantor_set = LSystem(90, 450, 3,
-                         '[F]X',
-                         {'F': 'FMF',
-                          'M': 'MMM',
-                          'X': '-ttMTT+T[F]X'})
-    koch_curve = LSystem(60, 250, 3,
-                         '[F++F++F]',
-                         {'F': 'F-F++F-F'})
-    rosemary = LSystem(25.7, 175, 2,
-                       '[H]',
-                       {'H': 'HFX[+H][-H]',
-                        'X': 'X[-FFF][+FFF]FX'})
-    levy_curve = load_LS("levy_curve.txt")
-    root = tk.Tk()
-    cantor_buffer = LSCanvasBuffer(root, cantor_set, ((-225, -64), 0))
-    cantor_buffer.generate(5)
-    # while 1:
-    #     animate_LS(cantor_buffer, 10, 0.5)
-    cantor_buffer[5].pack()
-    # levyCurve_buffer = LSCanvasBuffer(root, levy_curve, ((-100, -100), 0))
-    # levyCurve_buffer.generate(16)
-    # animate_LS(levyCurve_buffer, 16)
-    # levyCurve_buffer[10].pack()
-    # rosemary_buffer = LSCanvasBuffer(root, rosemary, ((-300, 0), 0))
-    # rosemary_buffer.generate(8)
-    # for _ in range(2):
-    #     animate_LS(rosemary_buffer, 8, 0.5)
-
-    # rosemary_buffer[8].pack()
-    # levyCurve_buffer[16].pack()
-    root.mainloop()
 
 
 if __name__ == "__main__":
