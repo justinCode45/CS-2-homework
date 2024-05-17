@@ -13,7 +13,6 @@
 #   5. support error handling
 #   6. support timeout handling
 #   7. read L-System from file
-#   8. SURPRISE!!!!!!!!!!!!!!!!!!!!!!!!!!(it is safe)
 # Please install ghostscript and PIL in order to save image
 
 import time
@@ -23,7 +22,6 @@ from tkinter import Canvas, Button, messagebox
 from PIL import Image, ImageTk
 import signal
 import traceback
-import surprise
 import io
 # you can change the following parameters
 WIDTH = 800
@@ -179,8 +177,12 @@ class App:
             self.root, width=WIDTH, height=HEIGHT)
         self.pic_fram.pack_propagate(False)
 
-        #surprise
-        surprise.surprise(self, WIDTH, HEIGHT)
+
+        img = Image.open("pic.jpg")
+        img.thumbnail((WIDTH, HEIGHT))
+        self.img = ImageTk.PhotoImage(img)
+        self.pic_label = tk.Label(self.pic_fram, image=self.img)
+        
 
         self.pic_fram.grid(row=0, column=0, rowspan=4)
         self.btn_show.grid(row=3, column=2)
@@ -227,7 +229,7 @@ class App:
     def heandler(self, *args):
         for c in self.pic_fram.winfo_children():
             c.pack_forget()
-        self.surprise.pack(fill="none", expand=True)
+        self.pic_label.pack(fill="none", expand=True)
         raise Exception("Timeout")
 
     def timeout_show(self):
