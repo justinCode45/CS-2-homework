@@ -1,8 +1,10 @@
+# Addtional funtinon:
+#   1. There is no any turtle get hurt in this code.
+
 from tkinter import Canvas, Button, messagebox, Tk, Label, Scrollbar, HORIZONTAL, E, W, N, S, ALL
 from PIL import Image, ImageTk
 from decimal import Decimal as Dec
 import tkinter as tk
-
 
 M_EARTH = Dec(5927)*Dec(10)**Dec(21)
 AU = Dec(149597870.7)*Dec(10)**Dec(3)
@@ -40,12 +42,13 @@ class Planet:
         self.mass = Dec(_mass)
         self.pos = _pos
         self.vel = _vel
+        self.img = None
+        self.isfixed = False
 
+    def config(self, **data) -> None:
 
-class Path:
-    pass
-
-
+        for key in data:
+            self.__dict__[key] = data[key]
 class SolarSystem:
 
     def __init__(self) -> None:
@@ -57,11 +60,13 @@ class SolarSystem:
         self.planets[self.size] = (planet)
         self.size += 1
 
-    def update(self, dt: float) -> None:
-        dt = Dec(dt) * TIME_SCALE
+    def update(self, dt: float, timescale) -> None:
+        dt = Dec(dt) * timescale
         old_planets = self.planets.copy()
 
         for i in self.planets.keys():
+            if self.planets[i].isfixed:
+                continue
             F = Vec2D(0, 0)
             for j in self.planets.keys():
                 if i == j:
@@ -100,35 +105,52 @@ class Path:
 
 class App:
 
-    def __init__(self) -> None:
+    def __init__(self,_system) -> None:
         self.root = Tk()
         self.root.title("Solar System")
         self.root.geometry(f"{800}x{800+100}")
 
         self.universe = Canvas(self.root, width=1000, height=1000, bg="white")
-        # self.universe.configure(scrollregion=self.universe.bbox("all"))
         self.time_var = tk.DoubleVar()
         self.time_lable = Label(self.root, textvariable=self.time_var,
                                 font=("TkFixedFont", 16), anchor="w", bg="white")
         self.time_var.set(0)
 
-        self.system = SolarSystem()
+        self.system: SolarSystem = _system
         self.uplanet: dict = {}
         self.upath: dict[int, Path] = {}
+
         self.universe.bind("<ButtonPress-1>", self.scroll_start)
         self.universe.bind("<B1-Motion>", self.scroll_move)
         self.universe.bind("<Button-4>", self.zoomerP)
         self.universe.bind("<Button-5>", self.zoomerM)
-        self.universe.bind("e", self.view_earth)
+
+        for i in range(len(self.system.planets.keys())):
+            self.universe.bind(f"{i+1}", lambda event,i=i: self.focus(event,i))
+
+
+        self.universe.bind("z",lambda event: self.time_scale_change(event,1))
+        self.universe.bind("x",lambda event: self.time_scale_change(event,2))
+        self.universe.bind("c",lambda event: self.time_scale_change(event,3))
+
         self.universe.focus_set()
         self.disscale = DIS_SCALE
+        self.timescale = TIME_SCALE
         self.translate = Vec2D(400, 400)
 
+    def time_scale_change(self, event, i):
+        if i == 1:
+            self.timescale = TIME_SCALE
+        elif i == 2:
+            self.timescale = TIME_SCALE*10
+        elif i == 3:
+            self.timescale = TIME_SCALE*100
+    
     def transform(self, p: Vec2D) -> Vec2D:
         return Vec2D(p.x*self.disscale, p.y*self.disscale)+self.translate
 
-    def view_earth(self, event):
-        canvas_center = self.universe.coords(self.uplanet[0])
+    def focus(self, event, i):
+        canvas_center = self.universe.coords(self.uplanet[i])
 
         view_center = (self.universe.canvasx(870/2),
                        self.universe.canvasy(870/2))
@@ -139,17 +161,13 @@ class App:
 
         self.universe.move(ALL, translate[0], translate[1])
 
-        # for path in self.upath.keys():
-        #     self.upath[path].clear()
-
-        # self.root.after(1, self.clear_path)
 
     def update(self) -> None:
         dt = 1
-        self.system.update(dt)
+        self.system.update(dt, self.timescale)
 
         self.time_var.set(self.time_var.get() + dt *
-                          float(TIME_SCALE)/(60*60*24*365))
+                          float(self.timescale)/(60*60*24*365))
 
         for key in self.system.planets.keys():
             pos = self.transform(self.system.planets[key].pos)
@@ -181,8 +199,6 @@ class App:
 
         self.root.mainloop()
 
-    def addPlanet(self, planet: Planet) -> None:
-        self.system.addPlanet(planet)
 
     def scroll_start(self, event):
         self.universe.scan_mark(event.x, event.y)
@@ -239,6 +255,7 @@ if __name__ == "__main__":
     jupiter = Planet(Dec(317.8)*M_EARTH,
                      Vec2D(AU*Dec(5.4588), 0), Vec2D(0, 13070))
 
+    sun.isfixed = True
     earth.vel = Vec2D(0, speed(AU*Dec(1.01673), M_SUN))
     murcury.vel = Vec2D(0, speed(AU*Dec(0.466697), M_SUN))
     venus.vel = Vec2D(0, speed(AU*Dec(0.728213), M_SUN))
@@ -247,12 +264,14 @@ if __name__ == "__main__":
     moon.vel = earth.vel + Vec2D(0, 1022)
     # moon.vel = Vec2D(0,1022)
 
-    app = App()
-    app.addPlanet(earth)
-    app.addPlanet(venus)
-    app.addPlanet(mars)
-    app.addPlanet(murcury)
-    app.addPlanet(sun)
-    app.addPlanet(moon)
-    app.addPlanet(jupiter)
+    system = SolarSystem()
+    system.addPlanet(sun)
+    system.addPlanet(murcury)
+    system.addPlanet(venus)
+    system.addPlanet(earth)
+    system.addPlanet(moon)
+    system.addPlanet(mars)
+    system.addPlanet(jupiter)
+
+    app = App(system)
     app.run()
