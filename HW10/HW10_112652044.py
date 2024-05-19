@@ -7,7 +7,7 @@ import tkinter as tk
 M_EARTH = Dec(5927)*Dec(10)**Dec(21)
 AU = Dec(149597870.7)*Dec(10)**Dec(3)
 DIS_SCALE = Dec(1)*Dec(10)**Dec(-9.5)
-TIME_SCALE = Dec(1)*Dec(10)**Dec(3)
+TIME_SCALE = Dec(1)*Dec(10)**Dec(3.5)
 G = Dec(6.67430)*Dec(10)**Dec(-11)
 M_SUN = Dec(333000)*M_EARTH
 
@@ -24,10 +24,10 @@ class Vec2D:
     def __sub__(self, other: 'Vec2D') -> 'Vec2D':
         return Vec2D(self.x - other.x, self.y - other.y)
 
-    def __mul__(self, other: Dec) -> 'Vec2D':
+    def __mul__(self, other:Dec) -> 'Vec2D':
         return Vec2D(self.x * other, self.y * other)
 
-    def __truediv__(self, other: Dec) -> 'Vec2D':
+    def __truediv__(self, other:Dec) -> 'Vec2D':
         return Vec2D(self.x / other, self.y / other)
 
     def norm(self) -> Dec:
@@ -137,15 +137,12 @@ class App:
                      view_center[1] - canvas_center[1])
         self.translate += Vec2D(translate[0], translate[1])
 
-        for planet in self.uplanet.keys():
-            pos = self.universe.coords(self.uplanet[planet])
-            self.universe.moveto(
-                self.uplanet[planet], pos[0]+translate[0], pos[1]+translate[1])
+        self.universe.move(ALL, translate[0], translate[1])
 
-        for path in self.upath.keys():
-            self.upath[path].clear()
+        # for path in self.upath.keys():
+        #     self.upath[path].clear()
 
-        self.root.after(1, self.clear_path)
+        # self.root.after(1, self.clear_path)
 
     def update(self) -> None:
         dt = 1
@@ -158,14 +155,16 @@ class App:
             pos = self.transform(self.system.planets[key].pos)
             p = self.universe.coords(self.uplanet[key])
 
-            self.universe.moveto(self.uplanet[key], float(
-                pos.x)-0.05, float(pos.y)-0.05)
+            self.universe.moveto(self.uplanet[key],
+                                 float(pos.x)-0.05, float(pos.y)-0.05)
 
             line = self.universe.create_line(
                 p[0]+0.05, p[1]+0.05, pos.x, pos.y, fill="red")
             self.upath[key].add(line)
 
+        self.universe.update()
         self.root.after(dt, self.update)
+
 
     def run(self) -> None:
         self.root.after(1, self.update)
@@ -192,20 +191,23 @@ class App:
         self.universe.scan_dragto(event.x, event.y, gain=1)
 
     def zoomerP(self, event):
-        self.universe.scale("all", event.x, event.y, 1.1, 1.1)
-        # self.universe.configure(scrollregion=self.universe.bbox("all"))
+
+        self.universe.scale(ALL, event.x, event.y, 1.1, 1.1)
         self.disscale *= Dec(1.1)
+
         for path in self.upath.keys():
             self.upath[path].clear()
-        self.root.after(1, self.clear_path)
+        self.root.after(10, self.clear_path)
 
     def zoomerM(self, event):
-        self.universe.scale("all", event.x, event.y, 0.9, 0.9)
-        # self.universe.configure(scrollregion=self.universe.bbox("all"))
+        
+        self.universe.scale(ALL, event.x, event.y, 0.9, 0.9)
         self.disscale *= Dec(0.9)
+
         for path in self.upath.keys():
             self.upath[path].clear()
-        self.root.after(1, self.clear_path)
+        self.root.after(10, self.clear_path)
+
 
     def clear_path(self):
         for path in self.upath.keys():
