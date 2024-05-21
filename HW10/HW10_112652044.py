@@ -1,9 +1,10 @@
 # Addtional funtinon:
 #   1. There is no any turtle get hurt in this code.
 
-from tkinter import Canvas, Button, messagebox, Tk, Label, Scrollbar, HORIZONTAL, E, W, N, S, ALL
+from tkinter import Canvas, Tk, Label, ALL
 from PIL import Image, ImageTk
 from decimal import Decimal as Dec
+from threading import Thread
 import tkinter as tk
 
 M_EARTH = Dec(5927)*Dec(10)**Dec(21)
@@ -26,10 +27,10 @@ class Vec2D:
     def __sub__(self, other: 'Vec2D') -> 'Vec2D':
         return Vec2D(self.x - other.x, self.y - other.y)
 
-    def __mul__(self, other:Dec) -> 'Vec2D':
+    def __mul__(self, other: Dec) -> 'Vec2D':
         return Vec2D(self.x * other, self.y * other)
 
-    def __truediv__(self, other:Dec) -> 'Vec2D':
+    def __truediv__(self, other: Dec) -> 'Vec2D':
         return Vec2D(self.x / other, self.y / other)
 
     def norm(self) -> Dec:
@@ -44,11 +45,14 @@ class Planet:
         self.vel = _vel
         self.img = None
         self.isfixed = False
+        self.name = ""
 
     def config(self, **data) -> None:
 
         for key in data:
             self.__dict__[key] = data[key]
+
+
 class SolarSystem:
 
     def __init__(self) -> None:
@@ -74,9 +78,9 @@ class SolarSystem:
                 r = old_planets[j].pos - old_planets[i].pos
                 if r.norm() < 0.0001:
                     continue
-                F += r * \
-                    (self.G * old_planets[i].mass *
-                     old_planets[j].mass) / (r.norm()**3)
+                f = r * (self.G * old_planets[i].mass * old_planets[j].mass)
+                f /= (r.norm()**3)
+                F += f
 
             acc = F / old_planets[i].mass
             self.planets[i].vel += acc * dt
@@ -85,16 +89,24 @@ class SolarSystem:
 
 class Path:
 
+    size = -1
+
     def __init__(self, c):
         self.path = []
         self.canvas: Canvas = c
-        self.size = -1
+
+    @classmethod
+    def csize(cls):
+        if cls.size == -1:
+            cls.size = 200
+        else:
+            cls.size = -1
 
     def add(self, p):
         self.path.append(p)
         if self.size == -1:
             return
-        if len(self.path) > self.size:
+        while len(self.path) > self.size:
             p = self.path.pop(0)
             self.canvas.delete(p)
 
@@ -105,12 +117,12 @@ class Path:
 
 class App:
 
-    def __init__(self,_system) -> None:
+    def __init__(self, _system) -> None:
         self.root = Tk()
         self.root.title("Solar System")
         self.root.geometry(f"{800}x{800+100}")
 
-        self.universe = Canvas(self.root, width=1000, height=1000, bg="white")
+        self.universe = Canvas(self.root, width=1000, height=1000, bg="#040310")
         self.time_var = tk.DoubleVar()
         self.time_lable = Label(self.root, textvariable=self.time_var,
                                 font=("TkFixedFont", 16), anchor="w", bg="white")
@@ -118,6 +130,7 @@ class App:
 
         self.system: SolarSystem = _system
         self.uplanet: dict = {}
+        self.uPimgae: dict = {}
         self.upath: dict[int, Path] = {}
 
         self.universe.bind("<ButtonPress-1>", self.scroll_start)
@@ -126,30 +139,42 @@ class App:
         self.universe.bind("<Button-5>", self.zoomerM)
 
         for i in range(len(self.system.planets.keys())):
-            self.universe.bind(f"{i+1}", lambda event,i=i: self.focus(event,i))
+            self.universe.bind(f"{i+1}", lambda event,
+                               i=i: self.focus(event, i))
 
-
-        self.universe.bind("z",lambda event: self.time_scale_change(event,1))
-        self.universe.bind("x",lambda event: self.time_scale_change(event,2))
-        self.universe.bind("c",lambda event: self.time_scale_change(event,3))
+        self.universe.bind("z", lambda event: self.time_scale_change(event, 1))
+        self.universe.bind("x", lambda event: self.time_scale_change(event, 2))
+        self.universe.bind("c", lambda event: self.time_scale_change(event, 3))
+        self.universe.bind(
+            "<space>", lambda event: self.time_scale_change(event, 4))
+        self.universe.bind("a", lambda event: Path.csize())
 
         self.universe.focus_set()
-        self.disscale = DIS_SCALE
         self.timescale = TIME_SCALE
+
+        self.disscale = DIS_SCALE
         self.translate = Vec2D(400, 400)
 
+        self.planetsize = 0.05
+        self.mouse = Vec2D(0, 0)
+
     def time_scale_change(self, event, i):
+        # change the time scale
         if i == 1:
             self.timescale = TIME_SCALE
         elif i == 2:
             self.timescale = TIME_SCALE*10
         elif i == 3:
             self.timescale = TIME_SCALE*100
-    
+        elif i == 4:
+            self.timescale = 0
+
     def transform(self, p: Vec2D) -> Vec2D:
+        # change the coordinate system
         return Vec2D(p.x*self.disscale, p.y*self.disscale)+self.translate
 
     def focus(self, event, i):
+        # foucus on the planet
         canvas_center = self.universe.coords(self.uplanet[i])
 
         view_center = (self.universe.canvasx(870/2),
@@ -161,9 +186,16 @@ class App:
 
         self.universe.move(ALL, translate[0], translate[1])
 
-
     def update(self) -> None:
+        # main loop
         dt = 1
+
+        if len(self.uplanet) == 0:
+            self.root.after(1, self.update)
+            return
+
+        p = [self.universe.coords(self.uplanet[key])
+             for key in self.system.planets.keys()]
         self.system.update(dt, self.timescale)
 
         self.time_var.set(self.time_var.get() + dt *
@@ -171,27 +203,28 @@ class App:
 
         for key in self.system.planets.keys():
             pos = self.transform(self.system.planets[key].pos)
-            p = self.universe.coords(self.uplanet[key])
 
             self.universe.moveto(self.uplanet[key],
-                                 float(pos.x)-0.05, float(pos.y)-0.05)
+                                 float(pos.x)-self.planetsize, float(pos.y)-self.planetsize)
 
             line = self.universe.create_line(
-                p[0]+0.05, p[1]+0.05, pos.x, pos.y, fill="red")
+                p[key][0]+self.planetsize, p[key][1]+self.planetsize, 
+                float(pos.x), float(pos.y), fill="red")
             self.upath[key].add(line)
 
         self.universe.update()
         self.root.after(dt, self.update)
 
-
     def run(self) -> None:
+        # preprocess
         self.root.after(1, self.update)
         self.time_lable.pack(expand=True, fill="x")
 
         for key in self.system.planets.keys():
             pos = self.transform(self.system.planets[key].pos)
-            b = self.universe.create_oval(float(pos.x)-0.05, float(pos.y)-0.05,
-                                          float(pos.x)+0.05, float(pos.y)+0.05, fill="blue")
+
+            b = self.universe.create_oval(float(pos.x)-self.planetsize, float(pos.y)-self.planetsize,
+                                          float(pos.x)+self.planetsize, float(pos.y)+self.planetsize, fill="blue")
             self.uplanet[key] = b
             self.upath[key] = Path(self.universe)
 
@@ -199,31 +232,70 @@ class App:
 
         self.root.mainloop()
 
-
     def scroll_start(self, event):
-        self.universe.scan_mark(event.x, event.y)
+        # drag the canvas
+        self.mouse = Vec2D(event.x, event.y)
 
     def scroll_move(self, event):
-        self.universe.scan_dragto(event.x, event.y, gain=1)
+        # drag the canvas
+        translat = Vec2D(event.x, event.y) - self.mouse
+        self.universe.move(ALL, translat.x, translat.y)
+        self.translate += translat
+        self.mouse = Vec2D(event.x, event.y)
 
     def zoomerP(self, event):
-
-        self.universe.scale(ALL, event.x, event.y, 1.1, 1.1)
+        # zoom in
+        self.mouse = Vec2D(event.x, event.y)
+        self.mouse = (self.universe.canvasx(event.x), self.universe.canvasy(event.y))
         self.disscale *= Dec(1.1)
+        self.planetsize *= 1.1
+        self.universe.delete(ALL)
 
-        for path in self.upath.keys():
-            self.upath[path].clear()
+        for key in self.system.planets.keys():
+            p = self.system.planets[key]
+            pos = self.transform(p.pos)
+            if self.planetsize >= 1 and p.img:
+                img = Image.open(p.img)
+                img = img.resize((int(2*self.planetsize), int(2*self.planetsize)))
+                img = ImageTk.PhotoImage(img)
+                self.uplanet[key] = self.universe.create_image(
+                    float(pos.x) - self.planetsize, float(pos.y) - self.planetsize, image=img, anchor="nw")
+                self.uPimgae[key] = img
+            else :
+                self.uplanet[key] = self.universe.create_oval(
+                    float(pos.x) - self.planetsize, float(pos.y) - self.planetsize, 
+                    float(pos.x) + self.planetsize, float(pos.y) + self.planetsize, 
+                    fill="blue")
+
+        self.translate = Vec2D(0,0)
         self.root.after(10, self.clear_path)
 
     def zoomerM(self, event):
-        
-        self.universe.scale(ALL, event.x, event.y, 0.9, 0.9)
+        # zoom out
+        self.mouse = Vec2D(event.x, event.y)
+        self.mouse = (self.universe.canvasx(event.x), self.universe.canvasy(event.y))
         self.disscale *= Dec(0.9)
+        self.planetsize *= 0.9 
+        self.universe.delete(ALL)
 
-        for path in self.upath.keys():
-            self.upath[path].clear()
+        for key in self.system.planets.keys():
+            p = self.system.planets[key]
+            pos = self.transform(p.pos)
+            if self.planetsize >= 1 and p.img:
+                img = Image.open(p.img)
+                img = img.resize((int(2*self.planetsize), int(2*self.planetsize)))
+                img = ImageTk.PhotoImage(img)
+                self.uplanet[key] = self.universe.create_image(
+                    float(pos.x) - self.planetsize, float(pos.y) - self.planetsize, image=img, anchor="nw")
+                self.uPimgae[key] = img
+            else :
+                self.uplanet[key] = self.universe.create_oval(
+                    float(pos.x) - self.planetsize, float(pos.y) - self.planetsize, 
+                    float(pos.x) + self.planetsize, float(pos.y) + self.planetsize, 
+                    fill="blue")
+
+        self.translate = Vec2D(0,0)
         self.root.after(10, self.clear_path)
-
 
     def clear_path(self):
         for path in self.upath.keys():
@@ -231,6 +303,7 @@ class App:
 
 
 def speed(r: Dec, m: Dec) -> Dec:
+    # calculate the speed of the planet
     return (G*m/r)**Dec(0.5)
 
 
@@ -262,7 +335,10 @@ if __name__ == "__main__":
     mars.vel = Vec2D(0, speed(AU*Dec(1.6666), M_SUN))
     jupiter.vel = Vec2D(0, speed(AU*Dec(5.4588), M_SUN))
     moon.vel = earth.vel + Vec2D(0, 1022)
-    # moon.vel = Vec2D(0,1022)
+
+    sun.config(name="Sun", img="sun.png")
+    earth.config(name="Earth", img="earth.png")
+    moon.config(name="Moon", img="moon.png")
 
     system = SolarSystem()
     system.addPlanet(sun)
